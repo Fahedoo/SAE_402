@@ -13,7 +13,7 @@
 * Utiliser le - possible de bibliothèques
 * Canvas/SVG pour le côté graphique
 * Demander aux profs avant d'utiliser technologie inhabituelle !!
-* (facultatif) Ajouter Webassembly
+* Ajouter Webassembly
 * Démonstration le jour du rendu
 * ⚠ Jeu doit etre accessible dans **TOUS** les postes du 2e étage !
 * Mentionner utilisation de l'IA et l'expliquer dans compte-rendu
