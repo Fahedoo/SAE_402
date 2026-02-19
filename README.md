@@ -11,7 +11,7 @@
 ## Contraintes
 * Jeu style "retro"
 * Utiliser le - possible de bibliothèques
-* Canvas/SVG pour le côté graphiquejr
+* Canvas/SVG pour le côté graphique
 * Demander aux profs avant d'utiliser technologie inhabituelle !!
 * Ajouter Webassembly
 * Démonstration le jour du rendu
