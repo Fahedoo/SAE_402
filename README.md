@@ -5,6 +5,7 @@
 * Multijoueur (2~4 joueurs)
 * Thème libre
 * Rendre code, vidéo, compte-rendu pour la soutenance du 20 Mars 2026
+* Soutenance 25min
 * Compte-rendu (PDF) explique déroulement du projet, évolution du code etc..
 
 ## Contraintes
