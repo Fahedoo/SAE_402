@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Serveur - Chef's Rage</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #222; color: white; font-family: sans-serif; }
+        #game { position: relative; width: 800px; height: 600px; background-color: #333; margin: 20px auto; border: 2px solid #555; }
+        .player { position: absolute; width: 30px; height: 30px; background-color: #e74c3c; border-radius: 5px; transition: transform 0.05s linear; }
+        .me { background-color: #3498db; z-index: 10; }
+        #info { text-align: center; margin-top: 10px; }
+        .debug-id { font-size: 10px; position: absolute; top: -15px; width: 200px; text-align: center; left: -85px; pointer-events: none;}
+    </style>
+</head>
+<body>
+    <div id="info">Connexion en cours... Utilisez ZSQD ou Flèches. Votre carré est le bleu.</div>
+    <div id="game"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const gameDiv = document.getElementById('game');
+        const infoDiv = document.getElementById('info');
+        const playersDivs = {};
+        
+        let myPosition = { x: 0, y: 0 };
+        const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, z: false, s: false, q: false, d: false };
+
+        socket.on('connect', () => {
+            infoDiv.innerText = "Connecté ! ZSQD / Flèches pour vous déplacer. Envoyez ce lien à l'équipe pour tester !";
+        });
+
+        socket.on('currentPlayers', (players) => {
+            for (let id in players) {
+                if (!playersDivs[id]) addPlayer(id, players[id]);
+            }
+        });
+
+        socket.on('newPlayer', (data) => {
+            if (!playersDivs[data.id]) addPlayer(data.id, data.playerInfo);
+        });
+
+        socket.on('playerMoved', (data) => {
+            if (playersDivs[data.id]) {
+                playersDivs[data.id].style.transform = `translate(${data.x}px, ${data.y}px)`;
+            }
+        });
+
+        socket.on('playerDisconnected', (id) => {
+            if (playersDivs[id]) {
+                gameDiv.removeChild(playersDivs[id]);
+                delete playersDivs[id];
+            }
+        });
+
+        function addPlayer(id, info) {
+            const div = document.createElement('div');
+            div.className = 'player';
+            div.style.transform = `translate(${info.x}px, ${info.y}px)`;
+            
+            const label = document.createElement('div');
+            label.className = 'debug-id';
+            label.innerText = (id === socket.id) ? "Moi" : "Joueur";
+            div.appendChild(label);
+            
+            if (id === socket.id) {
+                div.classList.add('me');
+                myPosition.x = info.x;
+                myPosition.y = info.y;
+            }
+            
+            gameDiv.appendChild(div);
+            playersDivs[id] = div;
+        }
+
+        window.addEventListener('keydown', (e) => { if (keys.hasOwnProperty(e.key)) keys[e.key] = true; });
+        window.addEventListener('keyup',   (e) => { if (keys.hasOwnProperty(e.key)) keys[e.key] = false; });
+
+        function update() {
+            let moved = false;
+            let speed = 5;
+            
+            if (keys.ArrowUp || keys.z) { myPosition.y -= speed; moved = true; }
+            if (keys.ArrowDown || keys.s) { myPosition.y += speed; moved = true; }
+            if (keys.ArrowLeft || keys.q) { myPosition.x -= speed; moved = true; }
+            if (keys.ArrowRight || keys.d) { myPosition.x += speed; moved = true; }
+
+            // Limites de la boîte serveur 800x600 (arbitraire)
+            myPosition.x = Math.max(0, Math.min(800 - 30, myPosition.x));
+            myPosition.y = Math.max(0, Math.min(600 - 30, myPosition.y));
+
+            if (moved && socket.id && playersDivs[socket.id]) {
+                playersDivs[socket.id].style.transform = `translate(${myPosition.x}px, ${myPosition.y}px)`;
+                socket.emit('playerMovement', myPosition);
+            }
+            requestAnimationFrame(update);
+        }
+        update();
+    </script>
+</body>
+</html>
