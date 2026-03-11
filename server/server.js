@@ -7,10 +7,12 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+const path = require('path');
+
 // On dit à Express de servir les fichiers du jeu (HTML/CSS/JS) qui seront dans un dossier "public"
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, '../public')));
 // On dit à Express d'exposer aussi le dossier assets !
-app.use('/assets', express.static('assets'));
+app.use('/assets', express.static(path.join(__dirname, '../public/assets')));
 
 // Cet objet va stocker l'état de tous les joueurs connectés
 const players = {};
