@@ -4,114 +4,328 @@
     <meta charset="UTF-8">
     <title>Test Serveur - Chef's Rage</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #222; color: white; font-family: sans-serif; }
-        #game { position: relative; width: 800px; height: 600px; background-color: #333; margin: 20px auto; border: 2px solid #555; }
-        .player {
-            position: absolute;
-            width: 30px;
-            height: 30px;
-            /* On enlève la couleur, on mettra l'image dans le src */
-            transition: transform 0.05s linear;
+        body { margin: 0; overflow: hidden; background-color: #222; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;}
+        
+        #login-screen {
+            background: #333;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #555;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            z-index: 100;
         }
-        .player img {
+        #login-screen h1 { margin-top: 0; color: #ffeb3b; }
+        #login-screen input, #login-screen select, #login-screen button {
+            margin: 10px 0;
+            padding: 10px;
             width: 100%;
-            height: 100%;
-            object-fit: contain; /* Garder les proportions du rat */
+            box-sizing: border-box;
+            border-radius: 5px;
+            border: none;
+            font-size: 16px;
         }
-        .me { z-index: 10; }
-        #info { text-align: center; margin-top: 10px; }
-        .debug-id { font-size: 10px; position: absolute; top: -15px; width: 200px; text-align: center; left: -85px; pointer-events: none;}
+        #login-screen button {
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #login-screen button:hover { background-color: #45a049; }
+        #error-msg { color: #ff5252; margin-top: 10px; font-weight: bold; }
+
+        #game-screen {
+            display: none; /* Caché au début */
+            flex-direction: column;
+            align-items: center;
+        }
+        #game { background-color: #444; border: 2px solid #777; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        #info { margin-bottom: 15px; font-size: 18px; color: #ccc;}
     </style>
 </head>
 <body>
-    <div id="info">Connexion en cours... Utilisez ZSQD ou Flèches. Votre rat est affiché avec le pseudo "Moi".</div>
-    <div id="game"></div>
+
+    <!-- MENUS DE CONNEXION -->
+    <div id="login-screen">
+        <h1>Chef's Rage - Lobby</h1>
+        <p>Rejoignez la brigade (Max 4)</p>
+        <input type="text" id="pseudo-input" placeholder="Votre Pseudo" maxlength="15" autocomplete="off">
+        <select id="color-input">
+            <option value="brun">Rat Brun</option>
+            <option value="gris">Rat Gris</option>
+            <option value="blanc">Rat Blanc</option>
+            <option value="noir">Rat Noir</option>
+        </select>
+        <button id="join-btn">Rejoindre la cuisine</button>
+        <div id="error-msg"></div>
+    </div>
+
+    <!-- ECRAN DE JEU -->
+    <div id="game-screen">
+        <div id="info">Connecté en tant que <span id="my-pseudo-display" style="font-weight:bold; color:#ffeb3b;"></span>. ZSQD ou Flèches pour bouger.</div>
+        <canvas id="game" width="800" height="600"></canvas>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        const gameDiv = document.getElementById('game');
-        const infoDiv = document.getElementById('info');
-        const playersDivs = {};
         
-        let myPosition = { x: 0, y: 0 };
-        const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, z: false, s: false, q: false, d: false };
+        // --- ÉLÉMENTS DU DOM ---
+        const loginScreen = document.getElementById('login-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const pseudoInput = document.getElementById('pseudo-input');
+        const colorInput = document.getElementById('color-input');
+        const joinBtn = document.getElementById('join-btn');
+        const errorMsg = document.getElementById('error-msg');
+        const myPseudoDisplay = document.getElementById('my-pseudo-display');
+        
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
 
-        socket.on('connect', () => {
-            infoDiv.innerText = "Connecté ! ZSQD / Flèches pour vous déplacer. Envoyez ce lien à l'équipe pour tester !";
-        });
+        // --- ETAT DU JEU ---
+        let players = {};
+        let tomatoes = [];
+        let levers = { lever1: false, lever2: false };
+        let myId = null;
+        let isPlaying = false;
+        
+        // Dictionnaire de couleurs SIMPLIFIÉ pour le rendu Canvas temporaire
+        const colorMap = {
+            'brun': '#8B4513',
+            'gris': '#808080',
+            'blanc': '#FFFFFF',
+            'noir': '#111111'
+        };
 
-        socket.on('currentPlayers', (players) => {
-            for (let id in players) {
-                if (!playersDivs[id]) addPlayer(id, players[id]);
+        const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, z: false, s: false, q: false, d: false, e: false };
+
+        // --- GESTION DU LOGIN ---
+        joinBtn.addEventListener('click', () => {
+            const pseudo = pseudoInput.value.trim();
+            if (!pseudo) {
+                errorMsg.innerText = "Veuillez entrer un pseudo !";
+                return;
             }
+            errorMsg.innerText = "Connexion...";
+            joinBtn.disabled = true;
+            
+            socket.emit('login', {
+                pseudo: pseudo,
+                color: colorInput.value
+            });
         });
 
-        socket.on('newPlayer', (data) => {
-            if (!playersDivs[data.id]) addPlayer(data.id, data.playerInfo);
+        socket.on('loginSuccess', (myData) => {
+            myId = myData.id;
+            isPlaying = true;
+            
+            // Cacher le login, montrer le jeu
+            loginScreen.style.display = 'none';
+            gameScreen.style.display = 'flex';
+            myPseudoDisplay.innerText = myData.pseudo;
+            
+            // Lancer la boucle de jeu
+            requestAnimationFrame(gameLoop);
+        });
+
+        socket.on('loginFailed', (msg) => {
+            errorMsg.innerText = msg;
+            joinBtn.disabled = false;
+        });
+
+        // --- RÉCEPTION DES DONNÉES RÉSEAU ---
+        socket.on('currentPlayers', (serverPlayers) => {
+            players = serverPlayers;
+        });
+
+        socket.on('newPlayer', (playerInfo) => {
+            players[playerInfo.id] = playerInfo;
         });
 
         socket.on('playerMoved', (data) => {
-            if (playersDivs[data.id]) {
-                playersDivs[data.id].style.transform = `translate(${data.x}px, ${data.y}px)`;
+            if (players[data.id]) {
+                players[data.id].x = data.x;
+                players[data.id].y = data.y;
             }
         });
 
         socket.on('playerDisconnected', (id) => {
-            if (playersDivs[id]) {
-                gameDiv.removeChild(playersDivs[id]);
-                delete playersDivs[id];
-            }
+            delete players[id];
         });
 
-        function addPlayer(id, info) {
-            const div = document.createElement('div');
-            div.className = 'player';
-            div.style.transform = `translate(${info.x}px, ${info.y}px)`;
+        // Objets interactifs
+        socket.on('currentTomatoes', (serverTomatoes) => {
+            tomatoes = serverTomatoes;
+        });
+
+        socket.on('newTomato', (tomato) => {
+            tomatoes.push(tomato);
+        });
+
+        socket.on('removeTomato', (tomatoId) => {
+            tomatoes = tomatoes.filter(t => t.id !== tomatoId);
+        });
+
+        socket.on('currentLevers', (serverLevers) => {
+            levers = serverLevers;
+        });
+
+        socket.on('leverStateChanged', (data) => {
+            levers[data.leverId] = data.state;
+        });
+
+        // --- GESTION DES INPUTS CLAVIER ---
+        window.addEventListener('keydown', (e) => { 
+            let key = e.key.toLowerCase();
+            if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
+            if (keys.hasOwnProperty(key)) keys[key] = true;
             
-            // Ajout de l'image du sprite
-            const img = document.createElement('img');
-            img.src = '/assets/sprites/rats/rat_brun.png';
-            div.appendChild(img);
-            
-            const label = document.createElement('div');
-            label.className = 'debug-id';
-            label.innerText = (id === socket.id) ? "Moi" : "Joueur";
-            div.appendChild(label);
-            
-            if (id === socket.id) {
-                div.classList.add('me');
-                myPosition.x = info.x;
-                myPosition.y = info.y;
+            // Interaction avec les leviers au moment précis de l'appui sur 'E'
+            // Pour simplifier, on vérifie si un levier est dans une zone d'interaction
+            if (key === 'e' && isPlaying && players[myId]) {
+                checkLeverInteraction();
             }
-            
-            gameDiv.appendChild(div);
-            playersDivs[id] = div;
+        });
+        window.addEventListener('keyup', (e) => { 
+            let key = e.key.toLowerCase();
+            if (keys.hasOwnProperty(e.key)) keys[e.key] = false;
+            if (keys.hasOwnProperty(key)) keys[key] = false;
+        });
+
+        function checkLeverInteraction() {
+            let myPlayer = players[myId];
+            // Postions en dur pour le prototype
+            let leverBoxes = {
+                lever1: { x: 200, y: 470, w: 40, h: 40 },
+                lever2: { x: 600, y: 470, w: 40, h: 40 }
+            };
+
+            for (let leverId in leverBoxes) {
+                let box = leverBoxes[leverId];
+                // Distance simple: centre du joueur au centre du levier
+                let px = myPlayer.x + 15;
+                let py = myPlayer.y + 15;
+                let lx = box.x + box.w/2;
+                let ly = box.y + box.h/2;
+                let dist = Math.sqrt(Math.pow(px-lx, 2) + Math.pow(py-ly, 2));
+
+                if (dist < 50) { // Rayon d'interaction
+                    socket.emit('toggleLever', leverId);
+                    // On ne casse pas la boucle pour permettre l'activation des deux si on est entre,
+                    // mais ici ils sont loin.
+                }
+            }
         }
 
-        window.addEventListener('keydown', (e) => { if (keys.hasOwnProperty(e.key)) keys[e.key] = true; });
-        window.addEventListener('keyup',   (e) => { if (keys.hasOwnProperty(e.key)) keys[e.key] = false; });
+        // --- BOUCLE DE JEU (LOGIQUE + RENDU) ---
+        function gameLoop() {
+            if (!isPlaying) return;
 
-        function update() {
+            updateLogic();
+            draw();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateLogic() {
+            if (!players[myId]) return;
+            
             let moved = false;
             let speed = 5;
+            let myPlayer = players[myId];
             
-            if (keys.ArrowUp || keys.z) { myPosition.y -= speed; moved = true; }
-            if (keys.ArrowDown || keys.s) { myPosition.y += speed; moved = true; }
-            if (keys.ArrowLeft || keys.q) { myPosition.x -= speed; moved = true; }
-            if (keys.ArrowRight || keys.d) { myPosition.x += speed; moved = true; }
+            if (keys.ArrowUp || keys.z) { myPlayer.y -= speed; moved = true; }
+            if (keys.ArrowDown || keys.s) { myPlayer.y += speed; moved = true; }
+            if (keys.ArrowLeft || keys.q) { myPlayer.x -= speed; moved = true; }
+            if (keys.ArrowRight || keys.d) { myPlayer.x += speed; moved = true; }
 
-            // Limites de la boîte serveur 800x600 (arbitraire)
-            myPosition.x = Math.max(0, Math.min(800 - 30, myPosition.x));
-            myPosition.y = Math.max(0, Math.min(600 - 30, myPosition.y));
+            // Limites du canvas
+            myPlayer.x = Math.max(0, Math.min(canvas.width - 30, myPlayer.x));
+            myPlayer.y = Math.max(0, Math.min(canvas.height - 30, myPlayer.y));
 
-            if (moved && socket.id && playersDivs[socket.id]) {
-                playersDivs[socket.id].style.transform = `translate(${myPosition.x}px, ${myPosition.y}px)`;
-                socket.emit('playerMovement', myPosition);
+            // Les tomates tombent aussi visuellement côté client pour fluidifier
+            // Même si le serveur fait autorité sur les événements
+            for (let t of tomatoes) {
+                t.y += t.speed;
             }
-            requestAnimationFrame(update);
+
+            if (moved) {
+                socket.emit('playerMovement', { x: myPlayer.x, y: myPlayer.y });
+            }
         }
-        update();
+
+        function draw() {
+            // 1. Effacer le canvas (fond gris foncé)
+            ctx.fillStyle = "#333333";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 2. Dessiner le sol (plateforme basique)
+            ctx.fillStyle = "#555555";
+            ctx.fillRect(0, canvas.height - 70, canvas.width, 70);
+
+            // 2.bis Dessiner les leviers
+            let leverBoxes = {
+                lever1: { x: 200, y: 490, w: 20, h: 40 },
+                lever2: { x: 600, y: 490, w: 20, h: 40 }
+            };
+            for (let lid in leverBoxes) {
+                let box = leverBoxes[lid];
+                // Base du levier
+                ctx.fillStyle = "#222";
+                ctx.fillRect(box.x - 10, box.y + 30, box.w + 20, 10);
+                
+                // Manche du levier
+                ctx.fillStyle = levers[lid] ? "#4CAF50" : "#ff5252"; // Vert si activé, rouge sinon
+                if (levers[lid]) {
+                    // Activé : incliné vers la droite (ou plus court physiquement)
+                    ctx.fillRect(box.x, box.y + 10, box.w, box.h - 10);
+                } else {
+                    // Désactivé : haut
+                    ctx.fillRect(box.x, box.y, box.w, box.h);
+                }
+                
+                ctx.fillStyle = "white";
+                ctx.font = "10px sans-serif";
+                ctx.fillText(lid, box.x + 10, box.y - 10);
+            }
+
+            // 3. Dessiner les tomates
+            for (let t of tomatoes) {
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, 10, 0, Math.PI * 2);
+                ctx.fillStyle = "#e53935"; // Rouge tomate
+                ctx.fill();
+                ctx.strokeStyle = "#b71c1c";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Petite tige verte pour faire plus tomate
+                ctx.fillStyle = "#43a047";
+                ctx.fillRect(t.x - 2, t.y - 12, 4, 4);
+            }
+
+            // 4. Dessiner tous les joueurs
+            for (let id in players) {
+                const p = players[id];
+                
+                // Corps du rat (carré de couleur)
+                ctx.fillStyle = colorMap[p.color] || '#ff00ff';
+                ctx.fillRect(p.x, p.y, 30, 30);
+                
+                // Bordure (plus épaisse si c'est nous)
+                ctx.strokeStyle = (id === myId) ? "#ffeb3b" : "#000000";
+                ctx.lineWidth = (id === myId) ? 3 : 1;
+                ctx.strokeRect(p.x, p.y, 30, 30);
+
+                // Texte au-dessus (Pseudo)
+                ctx.fillStyle = "white";
+                ctx.font = "12px sans-serif";
+                ctx.textAlign = "center";
+                // On affiche "Moi" en plus du pseudo si c'est le joueur actuel
+                const displayName = (id === myId) ? `${p.pseudo} (Moi)` : p.pseudo;
+                ctx.fillText(displayName, p.x + 15, p.y - 10);
+            }
+        }
     </script>
 </body>
 </html>
