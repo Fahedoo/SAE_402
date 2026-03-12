@@ -1,8 +1,6 @@
-// Au TOUT DÉBUT du main.js de ta collègue
 import { GameRenderer } from './renderer.js';
 
-let renderer = null; // Variable pour stocker ton moteur
-
+let renderer = null; 
 let currentPseudo = "";
 let selectedColor = "gray";
 let nbPlayers = 2;
@@ -71,47 +69,30 @@ optEnnemi.addEventListener('click', () => {
     optAmi.classList.remove('active');
 });
 
-// Lancement
-document.getElementById('btn-start-service').addEventListener('click', () => {
-    showScreen('screen-game');
-    startTestTimer();
-});
-
-function startTestTimer() {
-    let timeLeft = 180;
-    const timerDisplay = document.getElementById('timer');
-    const countdown = setInterval(() => {
-        timeLeft--;
-        const mins = Math.floor(timeLeft / 60);
-        const secs = timeLeft % 60;
-        timerDisplay.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-        if (timeLeft <= 0) {
-            clearInterval(countdown);
-            showScreen('screen-login');
-        }
-    }, 1000);
-}
+// --- GESTION DU CANVAS ET DU JEU ---
 
 function resizeCanvas() {
     const canvas = document.getElementById('gameCanvas');
-    if (canvas) {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        console.log(`Canvas redimensionné : ${canvas.width}x${canvas.height}`);
+    const hud = document.getElementById('hud');
+    
+    if (canvas && hud) {
+        canvas.width = 900; // Largeur fixe
+        // La hauteur = toute la fenêtre moins la place prise par le HUD
+        canvas.height = window.innerHeight - hud.offsetHeight; 
+        console.log("Canvas : 900x" + canvas.height);
     }
 }
 
-// On écoute si l'utilisateur change la taille de sa fenêtre
-window.addEventListener('resize', resizeCanvas);
-
+// UN SEUL écouteur pour lancer le service
 document.getElementById('btn-start-service').addEventListener('click', () => {
     showScreen('screen-game');
-    resizeCanvas(); 
+    resizeCanvas(); // On prépare la taille
     
     const canvas = document.getElementById('gameCanvas');
     
-    // CORRECTION ICI : On passe "selectedColor" au constructeur
+    // On initialise le moteur de rendu seulement s'il n'existe pas
     if (!renderer) {
+        // On passe la couleur sélectionnée au constructeur
         renderer = new GameRenderer(canvas, selectedColor); 
         
         function gameLoop() {
@@ -120,10 +101,29 @@ document.getElementById('btn-start-service').addEventListener('click', () => {
         }
         gameLoop();
     } else {
-        // Optionnel : Si le renderer existe déjà, on met à jour la couleur si besoin
-        renderer.imgIdle.src = `assets/rat_idle_${selectedColor}.png`;
-        renderer.imgRun.src = `assets/rat_run_${selectedColor}.png`;
+        // Si le renderer existe déjà, on met juste à jour la couleur du rat
+        renderer.setPlayerColor(selectedColor);
     }
 
     startTestTimer();
 });
+
+function startTestTimer() {
+    let timeLeft = 180;
+    const timerDisplay = document.getElementById('timer');
+    // On nettoie un éventuel ancien timer s'il tourne encore
+    if (window.currentTimer) clearInterval(window.currentTimer);
+
+    window.currentTimer = setInterval(() => {
+        timeLeft--;
+        const mins = Math.floor(timeLeft / 60);
+        const secs = timeLeft % 60;
+        timerDisplay.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        if (timeLeft <= 0) {
+            clearInterval(window.currentTimer);
+            showScreen('screen-login');
+        }
+    }, 1000);
+}
+
+window.addEventListener('resize', resizeCanvas);

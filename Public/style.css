@@ -206,3 +206,60 @@ canvas {
     background: #111; /* Fond de secours pour le jeu */
     image-rendering: pixelated; /* Garde le pixel art net */
 }
+
+/* Cache tout par défaut */
+.screen {
+    display: none; 
+    position: fixed; /* Superpose les écrans */
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: #0d0d0d;
+    z-index: 1;
+}
+
+/* Seul l'écran avec .active est visible */
+.screen.active {
+    display: flex;
+    z-index: 10;
+}
+
+/* Le plateau de jeu */
+
+
+#gameCanvas {
+    background-image: url('assets/fond.jpg'); /* Ton image de cuisine */
+    background-size: cover;
+    background-position: center;
+    image-rendering: pixelated;
+}
+#screen-game {
+    display: flex;
+    flex-direction: column;
+    align-items: center;    /* Centre le plateau horizontalement */
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;       /* Empêche le scroll bizarre */
+}
+
+#hud {
+    width: 100%;
+    flex-shrink: 0;         /* Le HUD ne s'écrase pas */
+    background: #000;
+    padding: 20px;
+    border-bottom: 4px solid #FF004D;
+}
+
+#gameCanvas {
+    background-color: #222222;
+    width: 900px;           /* Largeur fixe comme tu voulais */
+    flex-grow: 1;           /* PREND TOUTE LA HAUTEUR RESTANTE */
+    border-left: 4px solid #333;
+    border-right: 4px solid #333;
+    display: block;
+    image-rendering: pixelated;
+}
