@@ -108,19 +108,22 @@ document.getElementById('btn-start-service').addEventListener('click', () => {
     showScreen('screen-game');
     resizeCanvas(); 
     
-    // --- TON AJOUT ICI ---
     const canvas = document.getElementById('gameCanvas');
+    
+    // CORRECTION ICI : On passe "selectedColor" au constructeur
     if (!renderer) {
-        renderer = new GameRenderer(canvas);
+        renderer = new GameRenderer(canvas, selectedColor); 
         
-        // On lance la boucle à 60 FPS
         function gameLoop() {
             renderer.draw();
             requestAnimationFrame(gameLoop);
         }
         gameLoop();
+    } else {
+        // Optionnel : Si le renderer existe déjà, on met à jour la couleur si besoin
+        renderer.imgIdle.src = `assets/rat_idle_${selectedColor}.png`;
+        renderer.imgRun.src = `assets/rat_run_${selectedColor}.png`;
     }
-    // ---------------------
 
     startTestTimer();
 });

@@ -1,0 +1,208 @@
+/* ==========================================
+   1. BASES & RESET
+   ========================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: #0d0d0d; /* Noir profond */
+    color: #ffffff;
+    font-family: 'Press Start 2P', cursive;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+/* ==========================================
+   2. SYSTÈME D'ÉCRANS (SPA)
+   ========================================== */
+.screen {
+    display: none; /* Cache les écrans inactifs */
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+.screen.active {
+    display: flex; /* Affiche l'écran en cours */
+}
+
+/* Version plein écran pour le jeu */
+#screen-game {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+}
+
+/* ==========================================
+   3. COMPOSANTS UI GÉNÉRAUX (Boîtes, Titres, Boutons)
+   ========================================== */
+.retro-title {
+    font-size: 2.5rem;
+    margin-bottom: 40px;
+    text-align: center;
+}
+
+/* Couleurs bicolores pour "Chef's Rage" */
+.retro-title .white { color: #ffffff; text-shadow: 4px 4px #444; }
+.retro-title .red { color: #FF004D; text-shadow: 4px 4px #5a001b; }
+
+.menu-box {
+    background: #1a1a1a;
+    border: 6px solid #FFCC00; /* Jaune Fromage */
+    padding: 50px;
+    box-shadow: 0 0 40px rgba(255, 204, 0, 0.2);
+    max-width: 900px;
+    width: 95%;
+    border-radius: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+}
+
+.label {
+    font-size: 0.9rem;
+    color: #FFCC00;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    display: block;
+}
+
+input[type="text"] {
+    background: #000;
+    border: 3px solid #333;
+    color: #00FF41;
+    padding: 20px;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 1.2rem;
+    width: 100%;
+    outline: none;
+}
+
+button {
+    background: #FF004D;
+    color: white;
+    border: none;
+    padding: 20px;
+    font-family: 'Press Start 2P', cursive;
+    cursor: pointer;
+    box-shadow: 0 6px #8b002a;
+    transition: all 0.1s;
+}
+
+button:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px #8b002a;
+}
+
+/* ==========================================
+   4. ÉCRAN DE CONNEXION (Color Picker)
+   ========================================== */
+.color-picker {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.color-opt {
+    width: 60px;
+    height: 60px;
+    border: 4px solid #333;
+    cursor: pointer;
+}
+
+.color-opt.active {
+    border-color: #00FF41; /* Bordure verte si sélectionné */
+}
+
+/* ==========================================
+   5. ÉCRAN LOBBY (Cartes de choix & Slots)
+   ========================================== */
+.selection-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+}
+
+.choice-card {
+    background: #000;
+    border: 4px solid #333;
+    padding: 25px 15px;
+    cursor: pointer;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: all 0.2s ease;
+}
+
+.choice-card .choice-title { font-size: 1rem; }
+.choice-card .choice-desc { font-size: 0.5rem; color: #666; line-height: 1.4; }
+
+/* États actifs des choix */
+.choice-card.active { border-color: #FFCC00; transform: scale(1.02); }
+.mode-ami.active { border-color: #00FF41; color: #00FF41; }
+.mode-ennemi.active { border-color: #FF004D; color: #FF004D; }
+
+/* Liste des joueurs connectés */
+.slots-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    border-top: 3px dashed #333;
+    padding-top: 40px;
+}
+
+.slot {
+    background: #000;
+    border: 3px solid #222;
+    padding: 30px 15px;
+    font-size: 0.8rem;
+    color: #444;
+    text-align: center;
+    border-radius: 8px;
+}
+
+.slot.active {
+    color: #00FF41;
+    border-color: #00FF41;
+    box-shadow: inset 0 0 15px rgba(0, 255, 65, 0.1);
+}
+
+/* ==========================================
+   6. ÉCRAN DE JEU (HUD & Canvas)
+   ========================================== */
+#hud {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 10;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 20px;
+    color: #FFCC00;
+    border-bottom: 4px solid #333;
+}
+
+.hud-group {
+    font-size: 1rem;
+    display: flex;
+    gap: 10px;
+}
+
+canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    background: #111; /* Fond de secours pour le jeu */
+    image-rendering: pixelated; /* Garde le pixel art net */
+}
