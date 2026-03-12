@@ -2,6 +2,7 @@ let currentPseudo = "";
 let selectedColor = "gray";
 let nbPlayers = 2;
 let modeAmi = true;
+let isPaused = false;
 
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -105,3 +106,68 @@ document.getElementById('btn-start-service').addEventListener('click', () => {
     resizeCanvas(); // On ajuste la taille juste au moment où le jeu commence
     startTestTimer();
 });
+
+
+// --- GESTION DE LA FIN DE PARTIE ---
+function endGame(isVictory) {
+    const resultScreen = document.getElementById('screen-result');
+    const resultTitle = document.getElementById('result-title');
+    const finalScoreDisplay = document.getElementById('final-score');
+    const currentScore = document.getElementById('score').innerText;
+
+    // On change le style selon le résultat
+    if (isVictory) {
+        resultScreen.classList.add('victory');
+        resultScreen.classList.remove('game-over');
+        resultTitle.innerText = "MISSION RÉUSSIE !";
+    } else {
+        resultScreen.classList.add('game-over');
+        resultScreen.classList.remove('victory');
+        resultTitle.innerText = "BRIGADE VIRÉE !";
+    }
+
+    finalScoreDisplay.innerText = currentScore;
+    showScreen('screen-result');
+}
+
+// --- GESTION DE LA PAUSE ---
+function togglePause() {
+    // On ne peut mettre en pause que si on est sur l'écran de jeu
+    if (document.getElementById('screen-game').classList.contains('active')) {
+        isPaused = !isPaused;
+        const pauseOverlay = document.getElementById('pause-overlay');
+        pauseOverlay.style.display = isPaused ? 'flex' : 'none';
+        
+        // Ici, on pourrait ajouter un stop sur la musique ou le timer
+        console.log(isPaused ? "Jeu en pause" : "Reprise du service");
+    }
+}
+
+// Écouteur de touches (Clavier)
+document.addEventListener('keydown', (e) => {
+    if (e.key === "Escape") {
+        togglePause();
+    }
+});
+
+// Bouton reprendre
+document.getElementById('btn-resume').addEventListener('click', togglePause);
+
+// MODIF : On change la fin du timer pour appeler endGame
+function startTestTimer() {
+    let timeLeft = 180;
+    const timerDisplay = document.getElementById('timer');
+    const countdown = setInterval(() => {
+        if (!isPaused) { // On ne baisse le temps que si on n'est pas en pause
+            timeLeft--;
+            const mins = Math.floor(timeLeft / 60);
+            const secs = timeLeft % 60;
+            timerDisplay.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+            
+            if (timeLeft <= 0) {
+                clearInterval(countdown);
+                endGame(false); // Temps écoulé = Défaite
+            }
+        }
+    }, 1000);
+}

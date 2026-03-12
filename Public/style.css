@@ -206,3 +206,26 @@ canvas {
     background: #111; /* Fond de secours pour le jeu */
     image-rendering: pixelated; /* Garde le pixel art net */
 }
+
+/* ==========================================
+   8. ÉCRANS DE FIN & PAUSE
+   ========================================== */
+
+/* Écran de résultat spécifique */
+#screen-result.victory .retro-title { color: #00FF41; text-shadow: 4px 4px #005a17; }
+#screen-result.game-over .retro-title { color: #FF004D; text-shadow: 4px 4px #5a001b; }
+
+/* Overlay de Pause */
+#pause-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.7); /* Voile noir transparent */
+    backdrop-filter: blur(5px); /* Flou artistique sur le jeu derrière */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100; /* Toujours tout au-dessus */
+}
