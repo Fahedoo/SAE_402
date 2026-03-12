@@ -12,8 +12,8 @@
     <div id="app">
         <section id="screen-login" class="screen active">
             <h1 class="retro-title">
-    <span class="white">Chef's</span> <span class="red">Rage</span>
-</h1>
+                <span class="white">Chef's</span> <span class="red">Rage</span>
+            </h1>
             <div class="menu-box">
                 <p class="label">ENTRE TON NOM DE COMMIS :</p>
                 <input type="text" id="pseudo" placeholder="NOM DU RAT..." maxlength="12">
@@ -63,9 +63,13 @@
 
                 <div class="slots-container">
                     <div class="slot active" id="slot-1">MOI</div>
-                    <div class="slot">JOUEUR 2</div>
-                    <div class="slot extra-slot" style="display:none;">JOUEUR 3</div>
-                    <div class="slot extra-slot" style="display:none;">JOUEUR 4</div>
+                    <div class="slot" id="slot-2">EN ATTENTE...</div>
+                    <div class="slot extra-slot" id="slot-3" style="display:none;">EN ATTENTE...</div>
+                    <div class="slot extra-slot" id="slot-4" style="display:none;">EN ATTENTE...</div>
+                </div>
+
+                <div id="wait-message" style="display:none; margin-bottom: 15px;">
+                    <p class="label blink" style="color: #FFCC00;">EN ATTENTE DU CHEF...</p>
                 </div>
 
                 <button id="btn-start-service" class="btn-large">LANCER LE SERVICE !</button>
@@ -80,29 +84,29 @@
             <canvas id="gameCanvas"></canvas>
         </section>
 
-<section id="screen-result" class="screen">
-    <h2 id="result-title" class="retro-title">RÉSULTAT</h2>
-    <div class="menu-box">
-        <p class="label">SCORE FINAL :</p>
-        <div id="final-score" style="font-size: 2rem; color: #FFCC00; margin-bottom: 30px;">000000</div>
-        
-        <div class="selection-grid">
-            <button onclick="location.reload()">REJOUER</button>
-            <button class="btn-small" onclick="showScreen('screen-login')">MENU</button>
+        <section id="screen-result" class="screen">
+            <h2 id="result-title" class="retro-title">RÉSULTAT</h2>
+            <div class="menu-box">
+                <p class="label">SCORE FINAL :</p>
+                <div id="final-score" style="font-size: 2rem; color: #FFCC00; margin-bottom: 30px;">000000</div>
+                <div class="selection-grid">
+                    <button onclick="location.reload()">REJOUER</button>
+                    <button class="btn-small" onclick="showScreen('screen-login')">MENU</button>
+                </div>
+            </div>
+        </section>
+
+        <div id="pause-overlay" style="display: none;">
+            <div class="menu-box" style="width: 400px; text-align: center;">
+                <h2 class="retro-title" style="font-size: 1.5rem;">PAUSE</h2>
+                <button id="btn-resume" style="margin-bottom: 20px;">REPRENDRE</button>
+                <button class="btn-small" onclick="location.reload()">QUITTER</button>
+            </div>
         </div>
-    </div>
-</section>
-
-<div id="pause-overlay" style="display: none;">
-    <div class="menu-box" style="width: 400px; text-align: center;">
-        <h2 class="retro-title" style="font-size: 1.5rem;">PAUSE</h2>
-        <button id="btn-resume" style="margin-bottom: 20px;">REPRENDRE</button>
-        <button class="btn-small" onclick="location.reload()">QUITTER</button>
-    </div>
-</div>
         
     </div>
 
+    <script src="/socket.io/socket.io.js"></script>
     <script src="main.js"></script>
 </body>
 </html>

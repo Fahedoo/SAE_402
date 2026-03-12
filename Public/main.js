@@ -1,11 +1,14 @@
 // ==========================================
-// 1. ÉTAT DU JEU (POST-ITS)
+// 1. INITIALISATION & ÉTAT (LA TOUR DE CONTRÔLE)
 // ==========================================
+const socket = io(); // Connexion au serveur de Raphaël
+
 let currentPseudo = "";
 let selectedColor = "gray";
 let nbPlayers = 2;
 let modeAmi = true;
 let isPaused = false;
+let isAdmin = false; // Pour savoir si on est le Chef (Joueur 1)
 
 // ==========================================
 // 2. NAVIGATION (SPA)
@@ -20,7 +23,7 @@ function showScreen(screenId) {
 // 3. LOGIQUE CONNEXION (LOGIN)
 // ==========================================
 
-// Sélection couleur
+// Sélection de la couleur du rat
 document.querySelectorAll('.color-opt').forEach(opt => {
     opt.addEventListener('click', () => {
         document.querySelectorAll('.color-opt').forEach(o => o.classList.remove('active'));
@@ -29,43 +32,102 @@ document.querySelectorAll('.color-opt').forEach(opt => {
     });
 });
 
-// Bouton Connexion -> Envoi à Raph
+// Clic sur "REJOINDRE LA BRIGADE"
 document.getElementById('btn-to-lobby').addEventListener('click', () => {
     const input = document.getElementById('pseudo');
     currentPseudo = input.value.trim();
     
     if (currentPseudo !== "") {
-        // INFO POUR RAPH : On envoie les données de connexion
-        console.log("LOGIN envoyé :", currentPseudo, selectedColor);
-        /* socket.emit('login', { pseudo: currentPseudo, color: selectedColor }); */
-        
-        showScreen('screen-lobby');
+        // ON DEMANDE LA PERMISSION À RAPH
+        socket.emit('login', { pseudo: currentPseudo, color: selectedColor });
     } else {
         alert("Hé commis ! Entre un nom !");
     }
 });
 
+// RÉPONSE DE RAPH APRÈS LE LOGIN
+socket.on('loginSuccess', (playerData) => {
+    console.log("Login réussi !", playerData);
+    showScreen('screen-lobby');
+});
+
+socket.on('loginFailed', (message) => {
+    alert(message); // Affiche "Serveur plein" par exemple
+});
+
 // ==========================================
-// 4. LOGIQUE LOBBY (RÉGLAGES)
+// 4. LOGIQUE LOBBY (SYNCHRONISATION)
 // ==========================================
 
-// Choix 2/4 Joueurs
+// Mise à jour des cases (Slots) quand la liste des joueurs change
+function updatePlayersSlots(playersObj) {
+    const playersList = Object.values(playersObj);
+    
+    // On vide les 4 slots
+    for (let i = 1; i <= 4; i++) {
+        const slot = document.getElementById(`slot-${i}`);
+        slot.innerText = "EN ATTENTE...";
+        slot.classList.remove('active');
+    }
+
+    // On remplit avec les joueurs connectés
+    playersList.forEach((player, index) => {
+        const slotNum = index + 1;
+        const slotEl = document.getElementById(`slot-${slotNum}`);
+        if (slotEl) {
+            slotEl.innerText = player.pseudo.toUpperCase() + (player.id === socket.id ? " (MOI)" : "");
+            slotEl.classList.add('active');
+        }
+    });
+
+    // GESTION DU RÔLE : Le premier de la liste est le Chef (Admin)
+    if (playersList[0] && playersList[0].id === socket.id) {
+        isAdmin = true;
+        console.log("Tu es le Chef de Brigade !");
+    } else {
+        isAdmin = false;
+        setGuestMode(); // On bloque les boutons pour les autres
+    }
+}
+
+// Bloquer l'interface pour les invités (Commis)
+function setGuestMode() {
+    document.getElementById('btn-start-service').style.display = 'none';
+    const waitMsg = document.getElementById('wait-message');
+    if(waitMsg) waitMsg.style.display = 'block';
+
+    document.querySelectorAll('.choice-card').forEach(card => {
+        card.style.pointerEvents = 'none';
+        card.style.opacity = '0.5';
+    });
+}
+
+// ÉCOUTEURS POUR LE LOBBY
+socket.on('currentPlayers', (players) => updatePlayersSlots(players));
+socket.on('newPlayer', () => socket.emit('get_players_update')); // Optionnel selon Raph
+socket.on('playerDisconnected', () => socket.emit('get_players_update'));
+
+// Choix 2/4 Joueurs (Seul l'admin clique, mais on prévoit la synchro)
 const opt2 = document.getElementById('opt-2-players');
 const opt4 = document.getElementById('opt-4-players');
 const extraSlots = document.querySelectorAll('.extra-slot');
 
 opt2.addEventListener('click', () => {
+    if(!isAdmin) return;
     nbPlayers = 2;
     opt2.classList.add('active');
     opt4.classList.remove('active');
     extraSlots.forEach(s => s.style.display = 'none');
+    socket.emit('updateConfig', { nbPlayers: 2 });
 });
 
 opt4.addEventListener('click', () => {
+    if(!isAdmin) return;
     nbPlayers = 4;
     opt4.classList.add('active');
     opt2.classList.remove('active');
     extraSlots.forEach(s => s.style.display = 'block');
+    socket.emit('updateConfig', { nbPlayers: 4 });
 });
 
 // Choix Ami/Ennemi
@@ -73,53 +135,34 @@ const optAmi = document.getElementById('opt-mode-ami');
 const optEnnemi = document.getElementById('opt-mode-ennemi');
 
 optAmi.addEventListener('click', () => {
+    if(!isAdmin) return;
     modeAmi = true;
     optAmi.classList.add('active');
     optEnnemi.classList.remove('active');
+    socket.emit('updateConfig', { modeAmi: true });
 });
 
 optEnnemi.addEventListener('click', () => {
+    if(!isAdmin) return;
     modeAmi = false;
     optEnnemi.classList.add('active');
     optAmi.classList.remove('active');
+    socket.emit('updateConfig', { modeAmi: false });
 });
 
-// FONCTION POUR RAPH : Remplir les slots quand les gens arrivent
-function updatePlayersSlots(playersList) {
-    for (let i = 1; i <= 4; i++) {
-        const slot = document.getElementById(`slot-${i}`);
-        slot.innerText = "EN ATTENTE...";
-        slot.classList.remove('active');
-    }
-    playersList.forEach((player, index) => {
-        const slotNum = index + 1;
-        const slotEl = document.getElementById(`slot-${slotNum}`);
-        if (slotEl) {
-            slotEl.innerText = player.pseudo.toUpperCase() + (player.pseudo === currentPseudo ? " (MOI)" : "");
-            slotEl.classList.add('active');
-        }
-    });
-}
-
-// FONCTION POUR RAPH : Verrouiller si on n'est pas le chef
-function setGuestMode() {
-    document.getElementById('btn-start-service').style.display = 'none';
-    document.getElementById('wait-message').style.display = 'block';
-    document.querySelectorAll('.choice-card').forEach(card => {
-        card.style.pointerEvents = 'none';
-        card.style.opacity = '0.5';
-    });
-}
-
 // ==========================================
-// 5. LOGIQUE JEU (GAMEPLAY & HUD)
+// 5. LOGIQUE JEU (LANCEMENT & TIMERS)
 // ==========================================
 
-// Lancement (Appelé par le bouton Start ou par le signal de Raph)
+// Le Chef demande le lancement
 document.getElementById('btn-start-service').addEventListener('click', () => {
-    // INFO POUR RAPH : On prévient que le chef lance
-    /* socket.emit('start_service', { nbPlayers, modeAmi }); */
-    
+    socket.emit('requestStart');
+});
+
+// TOUT LE MONDE reçoit l'ordre de commencer
+socket.on('gameStarted', (config) => {
+    nbPlayers = config.nbPlayers;
+    modeAmi = config.modeAmi;
     showScreen('screen-game');
     resizeCanvas();
     startTestTimer();
@@ -183,13 +226,12 @@ function togglePause() {
 window.addEventListener('resize', resizeCanvas);
 
 document.addEventListener('keydown', (e) => {
-    // PAUSE
     if (e.key === "Escape") togglePause();
     
-    // INTERACTION (Touche E demandée par Raph)
+    // TOUCHE E : Interaction levier (Logique de Raph)
     if (e.key.toLowerCase() === "e") {
-        console.log("Action : Touche E pressée");
-        /* socket.emit('toggleLever'); */
+        console.log("Interaction levier !");
+        socket.emit('toggleLever', 'lever1'); // On envoie l'ID par défaut
     }
 });
 
