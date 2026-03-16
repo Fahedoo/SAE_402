@@ -8,7 +8,8 @@
 }
 
 body {
-    background-color: #0d0d0d; /* Noir profond */
+    background-color: #0d0d0d;
+    /* Noir profond */
     color: #ffffff;
     font-family: 'Press Start 2P', cursive;
     height: 100vh;
@@ -22,14 +23,16 @@ body {
    2. SYSTÈME D'ÉCRANS (SPA)
    ========================================== */
 .screen {
-    display: none; /* Cache les écrans inactifs */
+    display: none;
+    /* Cache les écrans inactifs */
     flex-direction: column;
     align-items: center;
     width: 100%;
 }
 
 .screen.active {
-    display: flex; /* Affiche l'écran en cours */
+    display: flex;
+    /* Affiche l'écran en cours */
 }
 
 /* Version plein écran pour le jeu */
@@ -49,12 +52,20 @@ body {
 }
 
 /* Couleurs bicolores pour "Chef's Rage" */
-.retro-title .white { color: #ffffff; text-shadow: 4px 4px #444; }
-.retro-title .red { color: #FF004D; text-shadow: 4px 4px #5a001b; }
+.retro-title .white {
+    color: #ffffff;
+    text-shadow: 4px 4px #444;
+}
+
+.retro-title .red {
+    color: #FF004D;
+    text-shadow: 4px 4px #5a001b;
+}
 
 .menu-box {
     background: #1a1a1a;
-    border: 6px solid #FFCC00; /* Jaune Fromage */
+    border: 6px solid #FFCC00;
+    /* Jaune Fromage */
     padding: 50px;
     box-shadow: 0 0 40px rgba(255, 204, 0, 0.2);
     max-width: 900px;
@@ -118,7 +129,8 @@ button:active {
 }
 
 .color-opt.active {
-    border-color: #00FF41; /* Bordure verte si sélectionné */
+    border-color: #00FF41;
+    /* Bordure verte si sélectionné */
 }
 
 /* ==========================================
@@ -142,13 +154,31 @@ button:active {
     transition: all 0.2s ease;
 }
 
-.choice-card .choice-title { font-size: 1rem; }
-.choice-card .choice-desc { font-size: 0.5rem; color: #666; line-height: 1.4; }
+.choice-card .choice-title {
+    font-size: 1rem;
+}
+
+.choice-card .choice-desc {
+    font-size: 0.5rem;
+    color: #666;
+    line-height: 1.4;
+}
 
 /* États actifs des choix */
-.choice-card.active { border-color: #FFCC00; transform: scale(1.02); }
-.mode-ami.active { border-color: #00FF41; color: #00FF41; }
-.mode-ennemi.active { border-color: #FF004D; color: #FF004D; }
+.choice-card.active {
+    border-color: #FFCC00;
+    transform: scale(1.02);
+}
+
+.mode-ami.active {
+    border-color: #00FF41;
+    color: #00FF41;
+}
+
+.mode-ennemi.active {
+    border-color: #FF004D;
+    color: #FF004D;
+}
 
 /* Liste des joueurs connectés */
 .slots-container {
@@ -203,8 +233,10 @@ canvas {
     width: 100%;
     height: 100%;
     display: block;
-    background: #111; /* Fond de secours pour le jeu */
-    image-rendering: pixelated; /* Garde le pixel art net */
+    background: #111;
+    /* Fond de secours pour le jeu */
+    image-rendering: pixelated;
+    /* Garde le pixel art net */
 }
 
 /* ==========================================
@@ -212,8 +244,55 @@ canvas {
    ========================================== */
 
 /* Écran de résultat spécifique */
-#screen-result.victory .retro-title { color: #00FF41; text-shadow: 4px 4px #005a17; }
-#screen-result.game-over .retro-title { color: #FF004D; text-shadow: 4px 4px #5a001b; }
+/* --- ÉCRAN DE RÉSULTAT DYNAMIQUE --- */
+
+/* Si on gagne (La classe .victory sera ajoutée par le JS) */
+.victory {
+    background: radial-gradient(circle, #2d5a27 0%, #1a3317 100%) !important;
+    border: 10px double #FFD700 !important;
+}
+
+/* Si on perd (La classe .game-over sera ajoutée par le JS) */
+.game-over {
+    background: radial-gradient(circle, #5a1a1a 0%, #330d0d 100%) !important;
+    border: 10px double #ff4444 !important;
+}
+
+.score-display {
+    font-size: 3rem;
+    margin: 20px 0;
+    font-family: 'Press Start 2P', cursive;
+    color: #FFCC00;
+}
+
+.result-msg {
+    font-size: 0.8rem;
+    margin-bottom: 25px;
+    line-height: 1.5;
+}
+
+/* Petite animation pour le titre qui tremble quand on perd */
+.game-over #result-title {
+    animation: shake 0.5s infinite;
+}
+
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-5px);
+    }
+
+    75% {
+        transform: translateX(5px);
+    }
+}
+
+
 
 /* Overlay de Pause */
 #pause-overlay {
@@ -222,10 +301,13 @@ canvas {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.7); /* Voile noir transparent */
-    backdrop-filter: blur(5px); /* Flou artistique sur le jeu derrière */
+    background: rgba(0, 0, 0, 0.7);
+    /* Voile noir transparent */
+    backdrop-filter: blur(5px);
+    /* Flou artistique sur le jeu derrière */
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 100; /* Toujours tout au-dessus */
+    z-index: 100;
+    /* Toujours tout au-dessus */
 }
