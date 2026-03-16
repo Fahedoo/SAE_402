@@ -13,12 +13,15 @@ let modeAmi = true;
 let isPaused = false;
 let isAdmin = false; 
 
+// --- NOUVEAU : GESTION MULTIJOUEUR ---
+let otherPlayers = {}; 
+
 // Éléments UI récupérés une seule fois
 const opt2 = document.getElementById('opt-2-players');
 const opt4 = document.getElementById('opt-4-players');
 const optAmi = document.getElementById('opt-mode-ami');
 const optEnnemi = document.getElementById('opt-mode-ennemi');
-const extraSlotsContainer = document.getElementById('extra-slots'); // Le conteneur des slots 3 et 4
+const extraSlotsContainer = document.getElementById('extra-slots');
 
 // ==========================================
 // 2. NAVIGATION (SPA)
@@ -33,7 +36,6 @@ function showScreen(screenId) {
 // 3. LOGIQUE CONNEXION (LOGIN)
 // ==========================================
 
-// Sélection de la couleur du rat
 document.querySelectorAll('.color-opt').forEach(opt => {
     opt.addEventListener('click', () => {
         document.querySelectorAll('.color-opt').forEach(o => o.classList.remove('active'));
@@ -69,7 +71,6 @@ socket.on('loginFailed', (message) => {
 function updatePlayersSlots(playersObj) {
     const playersList = Object.values(playersObj);
     
-    // Reset de tous les slots
     for (let i = 1; i <= 4; i++) {
         const slot = document.getElementById(`slot-${i}`);
         if(slot) {
@@ -78,18 +79,16 @@ function updatePlayersSlots(playersObj) {
         }
     }
 
-    // Remplissage avec les joueurs présents
     playersList.forEach((player, index) => {
         const slotNum = index + 1;
         const slotEl = document.getElementById(`slot-${slotNum}`);
         if (slotEl) {
             slotEl.innerText = player.pseudo.toUpperCase() + (player.id === socket.id ? " (MOI)" : "");
             slotEl.classList.add('active');
-            slotEl.style.color = player.color; // Optionnel : affiche le nom avec la couleur choisie
+            slotEl.style.color = player.color;
         }
     });
 
-    // Le premier de la liste serveur est le Chef
     if (playersList[0] && playersList[0].id === socket.id) {
         isAdmin = true;
         document.getElementById('btn-start-service').style.display = 'block';
@@ -116,7 +115,6 @@ socket.on('configUpdated', (config) => {
     nbPlayers = config.nbPlayers;
     modeAmi = config.modeAmi;
     
-    // Mise à jour visuelle des boutons 2/4 Joueurs
     if(nbPlayers === 2) {
         opt2.classList.add('active');
         opt4.classList.remove('active');
@@ -127,7 +125,6 @@ socket.on('configUpdated', (config) => {
         if(extraSlotsContainer) extraSlotsContainer.style.display = 'block';
     }
 
-    // Mise à jour visuelle Ami/Ennemi
     if(modeAmi) {
         optAmi.classList.add('active');
         optEnnemi.classList.remove('active');
@@ -137,19 +134,10 @@ socket.on('configUpdated', (config) => {
     }
 });
 
-// Écouteurs pour le Chef (envoient les changements au serveur)
-opt2.addEventListener('click', () => {
-    if(isAdmin) socket.emit('updateConfig', { nbPlayers: 2, modeAmi: modeAmi });
-});
-opt4.addEventListener('click', () => {
-    if(isAdmin) socket.emit('updateConfig', { nbPlayers: 4, modeAmi: modeAmi });
-});
-optAmi.addEventListener('click', () => {
-    if(isAdmin) socket.emit('updateConfig', { nbPlayers: nbPlayers, modeAmi: true });
-});
-optEnnemi.addEventListener('click', () => {
-    if(isAdmin) socket.emit('updateConfig', { nbPlayers: nbPlayers, modeAmi: false });
-});
+opt2.addEventListener('click', () => { if(isAdmin) socket.emit('updateConfig', { nbPlayers: 2, modeAmi: modeAmi }); });
+opt4.addEventListener('click', () => { if(isAdmin) socket.emit('updateConfig', { nbPlayers: 4, modeAmi: modeAmi }); });
+optAmi.addEventListener('click', () => { if(isAdmin) socket.emit('updateConfig', { nbPlayers: nbPlayers, modeAmi: true }); });
+optEnnemi.addEventListener('click', () => { if(isAdmin) socket.emit('updateConfig', { nbPlayers: nbPlayers, modeAmi: false }); });
 
 // ==========================================
 // 5. LOGIQUE JEU (LANCEMENT & RENDU)
@@ -164,6 +152,16 @@ socket.on('gameStarted', (config) => {
     initGameEngine();
 });
 
+// Écouter les mouvements des autres envoyés par le serveur
+socket.on('playerMoved', (data) => {
+    otherPlayers[data.id] = data;
+});
+
+// Retirer un rat quand il se déconnecte
+socket.on('playerDisconnected', (id) => {
+    delete otherPlayers[id];
+});
+
 function initGameEngine() {
     const canvas = document.getElementById('gameCanvas');
     resizeCanvas();
@@ -173,7 +171,18 @@ function initGameEngine() {
         
         function gameLoop() {
             if (!isPaused) {
-                renderer.draw();
+                // 1. ENVOYER ma position au serveur
+                socket.emit('playerMovement', {
+                    x: renderer.player.x,
+                    y: renderer.player.y,
+                    direction: renderer.player.direction,
+                    isMoving: renderer.player.isMoving,
+                    pseudo: currentPseudo, // Optionnel mais utile pour l'affichage
+                    color: selectedColor
+                });
+
+                // 2. DESSINER (Moi + les autres)
+                renderer.draw(otherPlayers);
             }
             requestAnimationFrame(gameLoop);
         }
@@ -239,10 +248,7 @@ window.addEventListener('resize', resizeCanvas);
 
 document.addEventListener('keydown', (e) => {
     if (e.key === "Escape") togglePause();
-    
-    if (e.key.toLowerCase() === "e") {
-        socket.emit('toggleLever'); 
-    }
+    if (e.key.toLowerCase() === "e") socket.emit('toggleLever'); 
 });
 
 const btnResume = document.getElementById('btn-resume');
