@@ -29,6 +29,7 @@ pub struct Player {
     pub vx: f32,
     pub vy: f32,
     pub on_ground: bool,
+    pub jump_boost_ready: bool,
 }
 
 #[wasm_bindgen]
@@ -39,6 +40,7 @@ impl Player {
             x, y, width, height,
             vx: 0.0, vy: 0.0,
             on_ground: false,
+            jump_boost_ready: false,
         }
     }
 }
@@ -89,8 +91,10 @@ impl World {
     pub fn player_jump(&mut self, id: usize, jump_speed: f32) {
         if let Some(p) = self.players.get_mut(id) {
             if p.on_ground {
-                p.vy = -jump_speed;
+                let jump_multiplier = if p.jump_boost_ready { 1.4 } else { 1.0 };
+                p.vy = -jump_speed * jump_multiplier;
                 p.on_ground = false;
+                p.jump_boost_ready = false;
             }
         }
     }
@@ -113,6 +117,7 @@ impl World {
             p.x += p.vx * dt;
             p.y += p.vy * dt;
             p.on_ground = false;
+            p.jump_boost_ready = false;
         }
 
         // 2) Collision avec le sol
@@ -127,13 +132,17 @@ impl World {
         // 3) Collision avec les plateformes (one-way : par le dessus uniquement)
         for p in self.players.iter_mut() {
             for plat in &self.platforms {
+                let prev_y = p.y - p.vy * dt;
+                let prev_bottom = prev_y + p.height;
                 let player_bottom = p.y + p.height;
                 let player_right = p.x + p.width;
                 let plat_right = plat.x + plat.width;
 
+                // Landing valide seulement si le joueur etait au-dessus
+                // puis traverse le dessus de la plateforme en descendant.
                 let lands = p.vy >= 0.0
+                    && prev_bottom <= plat.y + 0.5
                     && player_bottom >= plat.y
-                    && player_bottom <= plat.y + plat.height + 2.0
                     && player_right > plat.x
                     && p.x < plat_right;
 
@@ -145,7 +154,7 @@ impl World {
             }
         }
 
-        // 4) Collision joueur contre joueur (push simple)
+        // 4) Collision joueur contre joueur
         for a in 0..n {
             for b in (a + 1)..n {
                 let (left, right) = self.players.split_at_mut(a + 1);
@@ -156,6 +165,28 @@ impl World {
                 let overlap_y = (pa.y + pa.height).min(pb.y + pb.height) - pa.y.max(pb.y);
 
                 if overlap_x > 0.0 && overlap_y > 0.0 {
+                    // Cas "stomp": un joueur tombe sur la tete de l'autre.
+                    // On pose le joueur du dessus sur l'autre pour eviter
+                    // l'enfoncement du joueur du dessous dans le sol.
+                    let pa_is_above = pa.vy >= 0.0 && (pa.y + pa.height) <= (pb.y + 8.0);
+                    let pb_is_above = pb.vy >= 0.0 && (pb.y + pb.height) <= (pa.y + 8.0);
+
+                    if pa_is_above {
+                        pa.y = pb.y - pa.height;
+                        pa.vy = 0.0;
+                        pa.on_ground = true;
+                        pa.jump_boost_ready = true;
+                        continue;
+                    }
+
+                    if pb_is_above {
+                        pb.y = pa.y - pb.height;
+                        pb.vy = 0.0;
+                        pb.on_ground = true;
+                        pb.jump_boost_ready = true;
+                        continue;
+                    }
+
                     if overlap_x < overlap_y {
                         let push = overlap_x / 2.0;
                         if pa.x < pb.x {
@@ -166,16 +197,46 @@ impl World {
                             pb.x -= push;
                         }
                     } else {
-                        let push = overlap_y / 2.0;
+                        // Si le joueur du dessous est deja au sol, on ne le pousse
+                        // pas vers le bas: on remonte uniquement le joueur du dessus.
                         if pa.y < pb.y {
-                            pa.y -= push;
-                            pb.y += push;
+                            if pb.on_ground {
+                                pa.y -= overlap_y;
+                                pa.vy = 0.0;
+                                pa.on_ground = true;
+                                pa.jump_boost_ready = true;
+                            } else if pa.on_ground {
+                                pb.y += overlap_y;
+                            } else {
+                                let push = overlap_y / 2.0;
+                                pa.y -= push;
+                                pb.y += push;
+                            }
                         } else {
-                            pa.y += push;
-                            pb.y -= push;
+                            if pa.on_ground {
+                                pb.y -= overlap_y;
+                                pb.vy = 0.0;
+                                pb.on_ground = true;
+                                pb.jump_boost_ready = true;
+                            } else if pb.on_ground {
+                                pa.y += overlap_y;
+                            } else {
+                                let push = overlap_y / 2.0;
+                                pa.y += push;
+                                pb.y -= push;
+                            }
                         }
                     }
                 }
+            }
+        }
+
+        // 5) Re-clamp final au sol apres les collisions entre joueurs.
+        for p in self.players.iter_mut() {
+            if p.y + p.height > self.floor_y {
+                p.y = self.floor_y - p.height;
+                p.vy = 0.0;
+                p.on_ground = true;
             }
         }
     }

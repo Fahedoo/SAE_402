@@ -58,7 +58,7 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = 3030;
+const PORT = 3630;
 server.listen(PORT, () => {
   console.log(`Serveur lance sur http://localhost:${PORT}`);
 });
