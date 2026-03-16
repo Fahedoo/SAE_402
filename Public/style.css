@@ -8,7 +8,11 @@
 }
 
 body {
-    background-color: #0d0d0d; /* Noir profond */
+    /* Image de fond pour les côtés - On fusionne les deux blocs body ici */
+    background-image: url('assets/fond_ambiance.jpg'); 
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
     color: #ffffff;
     font-family: 'Press Start 2P', cursive;
     height: 100vh;
@@ -22,14 +26,23 @@ body {
    2. SYSTÈME D'ÉCRANS (SPA)
    ========================================== */
 .screen {
-    display: none; /* Cache les écrans inactifs */
+    display: none; 
     flex-direction: column;
     align-items: center;
-    width: 100%;
+    justify-content: center; /* Centrage vertical des menus */
+    width: 100vw;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    /* On enlève le fond noir ici pour voir l'image ambiance derrière les menus */
+    background-color: rgba(0, 0, 0, 0.6); 
+    z-index: 1;
 }
 
 .screen.active {
-    display: flex; /* Affiche l'écran en cours */
+    display: flex;
+    z-index: 10;
 }
 
 /* Version plein écran pour le jeu */
@@ -37,10 +50,12 @@ body {
     width: 100vw;
     height: 100vh;
     position: relative;
+    /* Pas de fond noir ici pour laisser voir l'ambiance sur les côtés */
+    background: transparent; 
 }
 
 /* ==========================================
-   3. COMPOSANTS UI GÉNÉRAUX (Boîtes, Titres, Boutons)
+   3. COMPOSANTS UI GÉNÉRAUX
    ========================================== */
 .retro-title {
     font-size: 2.5rem;
@@ -48,13 +63,12 @@ body {
     text-align: center;
 }
 
-/* Couleurs bicolores pour "Chef's Rage" */
 .retro-title .white { color: #ffffff; text-shadow: 4px 4px #444; }
 .retro-title .red { color: #FF004D; text-shadow: 4px 4px #5a001b; }
 
 .menu-box {
     background: #1a1a1a;
-    border: 6px solid #FFCC00; /* Jaune Fromage */
+    border: 6px solid #FFCC00;
     padding: 50px;
     box-shadow: 0 0 40px rgba(255, 204, 0, 0.2);
     max-width: 900px;
@@ -101,7 +115,7 @@ button:active {
 }
 
 /* ==========================================
-   4. ÉCRAN DE CONNEXION (Color Picker)
+   4. ÉCRAN DE CONNEXION
    ========================================== */
 .color-picker {
     display: flex;
@@ -118,11 +132,11 @@ button:active {
 }
 
 .color-opt.active {
-    border-color: #00FF41; /* Bordure verte si sélectionné */
+    border-color: #00FF41;
 }
 
 /* ==========================================
-   5. ÉCRAN LOBBY (Cartes de choix & Slots)
+   5. ÉCRAN LOBBY
    ========================================== */
 .selection-grid {
     display: grid;
@@ -142,15 +156,10 @@ button:active {
     transition: all 0.2s ease;
 }
 
-.choice-card .choice-title { font-size: 1rem; }
-.choice-card .choice-desc { font-size: 0.5rem; color: #666; line-height: 1.4; }
-
-/* États actifs des choix */
 .choice-card.active { border-color: #FFCC00; transform: scale(1.02); }
 .mode-ami.active { border-color: #00FF41; color: #00FF41; }
 .mode-ennemi.active { border-color: #FF004D; color: #FF004D; }
 
-/* Liste des joueurs connectés */
 .slots-container {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -172,16 +181,12 @@ button:active {
 .slot.active {
     color: #00FF41;
     border-color: #00FF41;
-    box-shadow: inset 0 0 15px rgba(0, 255, 65, 0.1);
 }
 
 /* ==========================================
    6. ÉCRAN DE JEU (HUD & Canvas)
    ========================================== */
 #hud {
-    position: absolute;
-    top: 0;
-    left: 0;
     width: 100%;
     z-index: 10;
     display: flex;
@@ -190,76 +195,17 @@ button:active {
     background: rgba(0, 0, 0, 0.8);
     padding: 20px;
     color: #FFCC00;
-    border-bottom: 4px solid #333;
-}
-
-.hud-group {
-    font-size: 1rem;
-    display: flex;
-    gap: 10px;
-}
-
-canvas {
-    width: 100%;
-    height: 100%;
-    display: block;
-    background: #111; /* Fond de secours pour le jeu */
-    image-rendering: pixelated; /* Garde le pixel art net */
-}
-
-/* Cache tout par défaut */
-.screen {
-    display: none; 
-    position: fixed; /* Superpose les écrans */
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background-color: #0d0d0d;
-    z-index: 1;
-}
-
-/* Seul l'écran avec .active est visible */
-.screen.active {
-    display: flex;
-    z-index: 10;
-}
-
-/* Le plateau de jeu */
-
-
-#gameCanvas {
-    background-image: url('assets/fond.jpg'); /* Ton image de cuisine */
-    background-size: cover;
-    background-position: center;
-    image-rendering: pixelated;
-}
-#screen-game {
-    display: flex;
-    flex-direction: column;
-    align-items: center;    /* Centre le plateau horizontalement */
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;       /* Empêche le scroll bizarre */
-}
-
-#hud {
-    width: 100%;
-    flex-shrink: 0;         /* Le HUD ne s'écrase pas */
-    background: #000;
-    padding: 20px;
     border-bottom: 4px solid #FF004D;
 }
 
 #gameCanvas {
-    background-color: #222222;
-    width: 900px;           /* Largeur fixe comme tu voulais */
-    flex-grow: 1;           /* PREND TOUTE LA HAUTEUR RESTANTE */
-    border-left: 4px solid #333;
-    border-right: 4px solid #333;
+    background-image: url('assets/fond.jpg'); 
+    background-size: 100% 100%; /* S'assure que la cuisine remplit bien le plateau */
+    background-position: center;
+    background-repeat: no-repeat;
+    width: 900px;
+    flex-grow: 1;
     display: block;
     image-rendering: pixelated;
+    box-shadow: 0 0 20px rgba(0,0,0,0.8);
 }
