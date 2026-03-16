@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chef's Rage</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      background-color: #222;
+      margin-top: 50px;
+    }
+
+    canvas {
+      background: #111;
+      border: 4px solid white;
+      display: block;
+      margin: auto;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game" width="800" height="600"></canvas>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
