@@ -18,19 +18,21 @@ export class GameRenderer {
         // x: position gauche | y: hauteur | w: largeur | slope: inclinaison
         this.platforms = [
             { x: 42,   y: 800, w: this.canvas.width-81, h: 18, slope: -50 }, // Bas
-            { x: 42,   y: 620, w: this.canvas.width-211, h: 18, slope: 70  }, // Étage 2
-            { x: 120,   y: 520, w: this.canvas.width-81, h: 18, slope: -50 }, // Étage 3
+            { x: 42,   y: 620, w: this.canvas.width-254, h: 18, slope: 45  }, // Étage 2
+            { x: 109,   y: 520, w: this.canvas.width-149, h: 18, slope: -50 }, // Étage 3
             { x: 42,   y: 350, w: this.canvas.width-145, h: 18, slope: 50  }, // Étage 4
-            { x: 42,   y: 270, w: this.canvas.width-81, h: 18, slope: -65  }, // Étage 5
-            { x: 100, y: 110,  w: this.canvas.width - 280, h: 18, slope: 30 } // Sommet (ex: plus court et plat)
+            { x: 42,   y: 270, w: this.canvas.width-83, h: 18, slope: -65  }, // Étage 5
+            { x: 63, y: 105,  w: this.canvas.width - 228, h: 18, slope: 30 } // Sommet (ex: plus court et plat)
         ];
 
         this.player = {
-            x: 100,
-            y: 0, 
-            isMoving: false,
-            direction: -1 
-        };
+    x: 100,
+    // On la place sur la plateforme 0 (celle du bas)
+    // On utilise 800 (ton y du bas) + une petite marge pour l'adhérence
+    y: 800 - 64, 
+    isMoving: false,
+    direction: -1 
+};
 
         this.setupTestControls();
     }
