@@ -311,3 +311,70 @@ canvas {
     z-index: 100;
     /* Toujours tout au-dessus */
 }
+
+#game-hints.medieval-style {
+    position: absolute;
+    top: 50%;
+    /* Centré verticalement sur le mur de gauche */
+    left: 50px;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    z-index: 100;
+}
+
+.hint-row {
+    display: flex;
+    flex-direction: column;
+    /* Touche au dessus du texte pour un look plus "RPG" */
+    align-items: flex-start;
+    gap: 8px;
+}
+
+/* Style "Pierre taillée" pour les touches */
+.key-stone {
+    background: #2a1d15;
+    /* Brun très sombre comme le bois/pierre du fond */
+    color: #e8c384;
+    /* Jaune vieilli comme ton HUD */
+    padding: 8px 12px;
+    border: 3px solid #1a110a;
+    box-shadow:
+        inset -3px -3px 0px #3d2b1f,
+        /* Ombre interne */
+        3px 3px 0px rgba(0, 0, 0, 0.5);
+    /* Ombre portée sur le mur */
+    font-size: 0.7rem;
+    font-family: 'Press Start 2P', cursive;
+    text-align: center;
+}
+
+.key-stone.space {
+    width: 140px;
+}
+
+.key-stone.interact {
+    border-color: #FFCC00;
+    /* On fait ressortir la touche d'action */
+}
+
+/* Texte sous les touches */
+.hint-text {
+    font-size: 0.55rem;
+    color: #8c7a6b;
+    /* Couleur pierre claire pour ne pas agresser l'oeil */
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Couleurs dynamiques pour le texte de la touche E */
+.mode-ami-text {
+    color: #55aa55 !important;
+    text-shadow: 1px 1px 0 #000;
+}
+
+.mode-rival-text {
+    color: #aa5555 !important;
+    text-shadow: 1px 1px 0 #000;
+}

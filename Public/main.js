@@ -143,6 +143,7 @@ opt4.addEventListener('click', () => isAdmin && socket.emit('updateConfig', { nb
 optAmi.addEventListener('click', () => isAdmin && socket.emit('updateConfig', { modeAmi: true }));
 optEnnemi.addEventListener('click', () => isAdmin && socket.emit('updateConfig', { modeAmi: false }));
 
+
 // ==========================================
 // 5. LOGIQUE JEU (HUD & SCORE)
 // ==========================================
@@ -151,9 +152,27 @@ document.getElementById('btn-start-service').addEventListener('click', () => {
     socket.emit('requestStart');
 });
 
+// ON GARDE SEULEMENT CELUI-CI (Le plus complet)
 socket.on('gameStarted', (config) => {
+    modeAmi = config.modeAmi;
     showScreen('screen-game');
     resizeCanvas();
+
+    // Logique pour les indications "Style Pierre" sur le mur de gauche
+    const hintE = document.getElementById('dynamic-e-text');
+    const stoneE = document.querySelector('.key-stone.interact');
+
+    if (hintE && stoneE) {
+        if (modeAmi) {
+            hintE.innerText = "INTERAGIR";
+            hintE.className = "hint-text mode-ami-text";
+            stoneE.style.borderColor = "#55aa55"; // Bordure verte
+        } else {
+            hintE.innerText = "INTERAGIR";
+            hintE.className = "hint-text mode-rival-text";
+            stoneE.style.borderColor = "#aa5555"; // Bordure rouge
+        }
+    }
 });
 
 // Mise à jour du score par Raphaël (Format Arcade 000000)
@@ -194,7 +213,6 @@ function endGame(isVictory, finalScore) {
     scoreDisp.innerText = (finalScore || 0).toString().padStart(6, '0');
     showScreen('screen-result');
 }
-
 // ==========================================
 // 6. SYSTÈME (INPUTS & RESIZE)
 // ==========================================
