@@ -120,7 +120,7 @@ io.on('connection', (socket) => {
     });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3050;
 server.listen(PORT, () => {
     console.log(`Serveur opérationnel sur http://localhost:${PORT}`);
 });
