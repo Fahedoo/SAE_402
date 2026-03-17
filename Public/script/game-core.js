@@ -1,5 +1,5 @@
 const DEFAULT_CONFIG = {
-  wasmImportPath: './wasm.js',
+  wasmImportPath: '/wasm.js',
   spritePath: './assets/sprites/rats/rat_cours.png',
   canvasIds: ['game', 'ecranDeJeu'],
   gravity: 1980.0,

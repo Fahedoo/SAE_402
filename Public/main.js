@@ -1,7 +1,7 @@
 import { startGame } from './script/game-core.js';
 
 startGame({
-  wasmImportPath: './wasm.js',
+  wasmImportPath: '/wasm.js',
   spritePath: './assets/sprites/rats/rat_cours.png',
   canvasIds: ['game', 'ecranDeJeu'],
   floorY: 580.0,
