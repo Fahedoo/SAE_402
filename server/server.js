@@ -1,180 +1,199 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const path = require('path');
 
-// Initialisation d'Express et du serveur HTTP
+// 1. IMPORT DU WASM DE FAHED
+const { World } = require('./pkg/physics');
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-const path = require('path');
-
-// On dit à Express de servir les fichiers du jeu (HTML/CSS/JS) qui seront dans un dossier "public"
+// --- CONFIGURATION DES DOSSIERS ---
 app.use(express.static(path.join(__dirname, '../public')));
-// On dit à Express d'exposer aussi le dossier assets !
 app.use('/assets', express.static(path.join(__dirname, '../public/assets')));
 
-// Cet objet va stocker l'état de tous les joueurs connectés
+// 2. INITIALISATION DE L'UNIVERS PHYSIQUE WASM
+const world = new World(1980.0, 580.0); // Gravité, Niveau du sol
+
+// /!\ N'oublie pas de rajouter tes plateformes ici quand Selma aura le Level Design
+// world.add_platform(100, 400, 200, 20); 
+
+// --- ÉTAT DU SERVEUR ET MÉCANIQUES ---
 const players = {};
+const playerWasmIds = {}; // Dictionnaire de traduction Socket.io <-> Wasm
 const MAX_PLAYERS = 4;
 
-// État des objets interactifs (tomates et leviers)
+let gameConfig = {
+    nbPlayers: 2,
+    modeAmi: true,
+    isStarted: false
+};
+
+// Objets du jeu
 let tomatoes = [];
 let nextTomatoId = 1;
 let levers = { lever1: false, lever2: false };
 
-// --- BOUCLE SERVEUR : Génération de tomates ---
+// --- BOUCLE DE GÉNÉRATION DES TOMATES (Toutes les 2 secondes) ---
 setInterval(() => {
-    // S'il n'y a personne, on ne génère pas de tomates
-    if (Object.keys(players).length === 0) return;
-
-    // Limite max de 10 tomates en jeu
-    if (tomatoes.length >= 10) return;
+    if (!gameConfig.isStarted || Object.keys(players).length === 0) return;
+    if (tomatoes.length >= 10) return; // Max 10 tomates
 
     const newTomato = {
         id: nextTomatoId++,
-        x: Math.floor(Math.random() * 750) + 20, // X aléatoire, évite les bords
-        y: -10, // Apparaît en haut (tombe du ciel)
-        speed: Math.floor(Math.random() * 3) + 2 // Vitesse de chute
+        x: Math.floor(Math.random() * 750) + 20,
+        y: -10,
+        speed: Math.floor(Math.random() * 3) + 2
     };
 
     tomatoes.push(newTomato);
     io.emit('newTomato', newTomato);
 }, 2000);
 
-// Chute des tomates et suppression si sorties de l'écran (60 FPS serveur simplifié)
-setInterval(() => {
-    if (tomatoes.length === 0) return;
-    
-    for (let i = tomatoes.length - 1; i >= 0; i--) {
-        tomatoes[i].y += tomatoes[i].speed;
-        
-        // Si elle touche le sol, on la supprime
-        if (tomatoes[i].y >= 530) {
-            io.emit('removeTomato', tomatoes[i].id);
-            tomatoes.splice(i, 1);
-        } else {
-            // Optionnel : on pourrait re-sync toutes les positions de tomates de temps en temps
-        }
-    }
-}, 1000 / 60);
-
-// Quand un client (navigateur) se connecte au serveur
+// --- GESTION DES CONNEXIONS ---
 io.on('connection', (socket) => {
-    console.log(`Nouveau client connecté : ${socket.id}`);
+    console.log(`Nouveau rat connecté : ${socket.id}`);
 
     // LOGIC: LOGIN
     socket.on('login', (data) => {
-        // Vérifier si la partie est pleine
-        if (Object.keys(players).length >= MAX_PLAYERS) {
-            socket.emit('loginFailed', 'Le serveur est plein (4 joueurs max).');
+        const playersCount = Object.keys(players).length;
+
+        if (playersCount >= MAX_PLAYERS) {
+            socket.emit('loginFailed', 'La cuisine est pleine ! (4 rats max)');
             return;
         }
 
-        console.log(`Joueur logué: ${data.pseudo} avec la couleur ${data.color}`);
+        const isChef = playersCount === 0;
 
-        // 1. On crée le profil du joueur dans notre objet 'players'
+        // ON AJOUTE LE JOUEUR DANS LE WASM
+        const wasmId = world.add_player(100, 100, 30, 30); // x, y, largeur, hauteur
+        playerWasmIds[socket.id] = wasmId;
+
         players[socket.id] = {
             id: socket.id,
             pseudo: data.pseudo || 'Anonyme',
-            color: data.color || 'brun',
-            x: Math.floor(Math.random() * 700) + 50, // Position X aléatoire pour tester
-            y: 500,                                  // Position Y (le sol)
-            role: 'rat'                              // Par défaut, on le met "rat"
+            color: data.color || 'gray',
+            isAdmin: isChef,
+            wasmId: wasmId
         };
 
-        // On lui envoie un message de succès
+        // Envoi des infos au nouveau joueur
         socket.emit('loginSuccess', players[socket.id]);
-
-        // 2. On envoie au NOUVEAU joueur la liste de TOUS les joueurs (y compris lui-même, géré par le client ou non)
         socket.emit('currentPlayers', players);
-
-        // NOUVEAU : On lui envoie l'état actuel des tomates et des leviers
+        socket.emit('configUpdated', gameConfig);
         socket.emit('currentTomatoes', tomatoes);
         socket.emit('currentLevers', levers);
 
-        // 3. On prévient les AUTRES joueurs qu'un nouveau vient d'arriver
+        // Prévenir les autres
         socket.broadcast.emit('newPlayer', players[socket.id]);
+        console.log(`${players[socket.id].pseudo} est entré (Chef: ${isChef})`);
     });
 
-    // ÉCOUTE : Mode Coop - Interaction avec un levier
+    // LOBBY : SYNCHRONISATION DES RÉGLAGES
+    socket.on('updateConfig', (newConfig) => {
+        if (players[socket.id] && players[socket.id].isAdmin) {
+            gameConfig = { ...gameConfig, ...newConfig };
+            socket.broadcast.emit('configUpdated', gameConfig);
+        }
+    });
+
+    // LOBBY : LE TOP DÉPART
+    socket.on('requestStart', () => {
+        if (players[socket.id] && players[socket.id].isAdmin) {
+            gameConfig.isStarted = true;
+            io.emit('gameStarted', gameConfig);
+            console.log("🚀 Le Chef a lancé le service !");
+        }
+    });
+
+    // COOP : INTERACTION LEVIER
     socket.on('toggleLever', (leverId) => {
-        if (!players[socket.id]) return;
-        if (levers[leverId] !== undefined) {
-            levers[leverId] = !levers[leverId]; // Inverse l'état
-            console.log(`Levier ${leverId} basculé: ${levers[leverId]} par ${players[socket.id].pseudo}`);
-            // Diffuse à tout le monde (y compris l'expéditeur pour validation)
-            io.emit('leverStateChanged', { leverId, state: levers[leverId] });
+        if (!players[socket.id] || levers[leverId] === undefined) return;
+
+        levers[leverId] = !levers[leverId]; // Inverse l'état
+        console.log(`Levier ${leverId} basculé: ${levers[leverId]} par ${players[socket.id].pseudo}`);
+        io.emit('leverStateChanged', { leverId, state: levers[leverId] });
+    });
+
+    // GAMEPLAY : RÉCEPTION DES INPUTS (Le client n'envoie plus de X/Y)
+    socket.on('playerInput', (data) => {
+        let wasmId = playerWasmIds[socket.id];
+        if (wasmId === undefined) return;
+
+        if (data.action === 'move') {
+            world.set_player_vx(wasmId, data.vx); // Ex: 200 pour droite, -200 pour gauche, 0 pour stop
+        } else if (data.action === 'jump') {
+            world.player_jump(wasmId, 450); // Force du saut
         }
     });
 
-    // 4. ÉCOUTE : Quand le joueur appuie sur une touche et envoie sa nouvelle position
-    socket.on('playerMovement', (movementData) => {
-        if (!players[socket.id]) return; // Ignorer si pas logué
-
-        let myPlayer = players[socket.id];
-        let oldX = myPlayer.x;
-        let oldY = myPlayer.y;
-
-        // Mise à jour (brouillon)
-        myPlayer.x = movementData.x;
-        myPlayer.y = movementData.y;
-
-        // --- BODY BLOCK LÉGER ---
-        // Vérification de collision avec les autres joueurs
-        const PLAYER_SIZE = 30;
-        let collision = false;
-
-        for (let otherId in players) {
-            if (otherId === socket.id) continue;
-            let other = players[otherId];
-
-            // AABB Collision standard
-            if (myPlayer.x < other.x + PLAYER_SIZE &&
-                myPlayer.x + PLAYER_SIZE > other.x &&
-                myPlayer.y < other.y + PLAYER_SIZE &&
-                myPlayer.y + PLAYER_SIZE > other.y) {
-                
-                collision = true;
-                break;
-            }
-        }
-
-        if (collision) {
-            // Rejette le mouvement serveur
-            myPlayer.x = oldX;
-            myPlayer.y = oldY;
-            // Force le client à reprendre sa position validée
-            socket.emit('playerMoved', { id: socket.id, x: myPlayer.x, y: myPlayer.y });
-            return;
-        }
-
-        // On "broadcast" (diffuse) cette nouvelle position à tous les autres joueurs
-        socket.broadcast.emit('playerMoved', {
-            id: socket.id,
-            x: myPlayer.x,
-            y: myPlayer.y
-        });
-    });
-
-    // 5. DÉCONNEXION : Quand le joueur ferme son onglet
+    // DÉCONNEXION
     socket.on('disconnect', () => {
-        console.log(`Client déconnecté : ${socket.id}`);
-
-        // S'il était logué
         if (players[socket.id]) {
-            console.log(`Joueur ${players[socket.id].pseudo} nous a quitté.`);
-            // On le supprime de notre liste
-            delete players[socket.id];
+            console.log(`${players[socket.id].pseudo} a quitté la brigade.`);
+            const wasAdmin = players[socket.id].isAdmin;
 
-            // On prévient tout le monde de l'effacer de leur écran
+            delete players[socket.id];
+            delete playerWasmIds[socket.id]; // On le retire de notre dico Wasm
+
+            if (Object.keys(players).length === 0) {
+                gameConfig.isStarted = false;
+                tomatoes = []; // On nettoie les tomates
+            } else if (wasAdmin) {
+                const remainingIds = Object.keys(players);
+                players[remainingIds[0]].isAdmin = true;
+            }
+
             io.emit('playerDisconnected', socket.id);
+            io.emit('currentPlayers', players);
         }
     });
 });
 
-// Lancement du serveur sur le port 3000
+// --- LE CŒUR BATTANT DU JEU (Boucle 60 FPS) ---
+setInterval(() => {
+    if (!gameConfig.isStarted) return;
+
+    // 1. On fait avancer la physique des joueurs (Wasm)
+    world.step(1 / 60);
+
+    // 2. On fait avancer les tomates (JS basique car pas dans le Wasm de Fahed)
+    if (tomatoes.length > 0) {
+        for (let i = tomatoes.length - 1; i >= 0; i--) {
+            tomatoes[i].y += tomatoes[i].speed;
+            if (tomatoes[i].y >= 530) {
+                io.emit('removeTomato', tomatoes[i].id);
+                tomatoes.splice(i, 1);
+            }
+        }
+    }
+
+    // 3. On prépare le paquet de données à envoyer aux clients
+    const stateToBroadcast = {
+        players: {},
+        // Optionnel: tu pourrais aussi renvoyer la position exacte des tomates ici si tu veux 
+        // être sûr que personne ne désynchronise, mais c'est lourd pour le réseau.
+    };
+
+    for (let socketId in players) {
+        let wasmId = playerWasmIds[socketId];
+        stateToBroadcast.players[socketId] = {
+            x: world.get_player_x(wasmId),
+            y: world.get_player_y(wasmId),
+            on_ground: world.get_player_on_ground(wasmId),
+            direction: players[socketId].direction // Si tu as besoin de savoir vers où il regarde
+        };
+    }
+
+    // 4. On diffuse la réalité à 60 images par seconde
+    io.emit('worldState', stateToBroadcast);
+
+}, 1000 / 60);
+
+// --- LANCEMENT ---
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`Serveur Socket.io opérationnel sur http://localhost:${PORT}`);
+    console.log(`Serveur Multi (Wasm Hardcore) opérationnel sur http://localhost:${PORT}`);
 });
