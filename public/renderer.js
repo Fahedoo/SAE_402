@@ -6,51 +6,63 @@ const allSkinsIdle = {};
 const allSkinsRun = {};
 
 export class GameRenderer {
-    // NOUVEAU : Ajout du socket en paramètre
-    constructor(canvas, color = 'gray', socket) {
+    constructor(canvas, color = 'gray', socket) { 
         this.canvas = canvas;
         this.ctx = this.canvas.getContext('2d');
         this.ctx.imageSmoothingEnabled = false;
-        this.socket = socket; // Lien direct avec ton server.js
+        this.socket = socket; 
 
-        this.imgChef1 = new Image();
-        this.imgChef1.src = 'assets/chef_1.png';
+        this.imgIdle = new Image();
+        this.imgIdle.src = `assets/rat_idle_${color}.png`; 
+        this.imgRun = new Image();
+        this.imgRun.src = `assets/rat_run_${color}.png`; 
+
+        this.imgChef3 = new Image();
+        this.imgChef3.src = 'assets/chef_3.png'; 
         this.imgChef2 = new Image();
-        this.imgChef2.src = 'assets/chef_2.png';
+        this.imgChef2.src = 'assets/chef_2.png'; 
+        this.imgChef1 = new Image();
+        this.imgChef1.src = 'assets/chef_1.png'; 
 
-        // Variables pour l'animation du chef
-        this.chefFrame = 0;
-        this.lastChefSwap = Date.now();
-        // --------------------------
+        // CHARGEMENT DU FROMAGE DE SELMA
+        this.imgFromage = new Image();
+        this.imgFromage.src = 'assets/fromage.png'; 
 
+        this.chefFrame = 0;             
+        this.lastChefSwap = Date.now(); 
+        
         this.vfx = new VFXManager();
 
-        // --- TES PLATEFORMES ---
+        // PLATEFORMES DE SELMA
         this.platforms = [
-            { x: 42, y: 800, w: this.canvas.width - 81, h: 18, slope: -50 }, // Bas
-            { x: 42, y: 620, w: this.canvas.width - 254, h: 18, slope: 45 }, // Étage 2
-            { x: 109, y: 520, w: this.canvas.width - 149, h: 18, slope: -50 }, // Étage 3
-            { x: 42, y: 350, w: this.canvas.width - 145, h: 18, slope: 50 }, // Étage 4
-            { x: 42, y: 270, w: this.canvas.width - 83, h: 18, slope: -65 }, // Étage 5
-            { x: 63, y: 105, w: this.canvas.width - 228, h: 18, slope: 30 } // Sommet
+            { x: 42,   y: 800, w: this.canvas.width-81, h: 18, slope: -50 }, // Bas (0)
+            { x: 42,   y: 620, w: this.canvas.width-254, h: 18, slope: 45  }, // Étage 2 (1)
+            { x: 109,  y: 520, w: this.canvas.width-149, h: 18, slope: -50 }, // Étage 3 (2)
+            { x: 42,   y: 353, w: this.canvas.width-145, h: 18, slope: 50  }, // Étage 4 (3)
+            { x: 42,   y: 275, w: this.canvas.width-83, h: 18, slope: -65  }, // Étage 5 (4)
+            { x: 63,   y: 125, w: this.canvas.width - 228, h: 18, slope: 30 }, // Sommet Chef (5)
+            { x: 300,  y: 70,  w: 170, h: 18, slope: 0 } // Le fromage ! (6)
         ];
 
-        // --- TES ÉCHELLES (Dynamiques) ---
-        // topIndex: Plateforme du haut | bottomIndex: Plateforme du bas
+        // ÉCHELLES DE SELMA
         this.ladders = [
-            { x: 600, topIndex: 1, bottomIndex: 0, w: 30 }, // Relie Étage 2 (1) au Bas (0)
-            { x: 150, topIndex: 2, bottomIndex: 1, w: 30 }, // Relie Étage 3 (2) à Étage 2 (1)
-            { x: 650, topIndex: 3, bottomIndex: 2, w: 30 }, // Relie Étage 4 (3) à Étage 3 (2)
-            { x: 180, topIndex: 4, bottomIndex: 3, w: 30 }, // Relie Étage 5 (4) à Étage 4 (3)
-            { x: 600, topIndex: 5, bottomIndex: 4, w: 30 }  // Relie Sommet (5) à Étage 5 (4)
+            { x: 600, topIndex: 1, bottomIndex: 0, w: 30 }, 
+            { x: 150, topIndex: 2, bottomIndex: 1, w: 30 }, 
+            { x: 650, topIndex: 3, bottomIndex: 2, w: 30 }, 
+            { x: 100, topIndex: 4, bottomIndex: 3, w: 30 }, 
+            { x: 600, topIndex: 5, bottomIndex: 4, w: 30 }, 
+            { x: 420, topIndex: 6, bottomIndex: 5, w: 30 }  // Échelle Fromage
         ];
 
-        // SUPPRESSION DE this.player ! Le serveur gère maintenant ton rat.
+        // ÉCHELLES CASSÉES DE SELMA
+        this.brokenLadders = [
+            { x: 350, topIndex: 2, bottomIndex: 1, w: 30 }, 
+            { x: 450, topIndex: 4, bottomIndex: 3, w: 30 }  
+        ];
 
         this.setupTestControls();
     }
 
-    // --- UTILITAIRE : Calcule le Y exact d'une plateforme à une position X ---
     getPlatformY(index, targetX) {
         const plat = this.platforms[index];
         const ratio = (targetX - plat.x) / plat.w;
@@ -59,14 +71,12 @@ export class GameRenderer {
 
     drawLadders() {
         this.ctx.save();
-
         this.ladders.forEach(lad => {
             const yTopL = this.getPlatformY(lad.topIndex, lad.x);
             const yBotL = this.getPlatformY(lad.bottomIndex, lad.x);
             const yTopR = this.getPlatformY(lad.topIndex, lad.x + lad.w);
             const yBotR = this.getPlatformY(lad.bottomIndex, lad.x + lad.w);
 
-            // 1. Ombre portée (coupée parfaitement)
             this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
             this.ctx.lineWidth = 4;
             this.ctx.beginPath();
@@ -76,8 +86,7 @@ export class GameRenderer {
             this.ctx.lineTo(lad.x + lad.w + 3, yBotR + 3);
             this.ctx.stroke();
 
-            // 2. Montants verticaux (ne dépassent plus)
-            this.ctx.strokeStyle = '#d1d8e0';
+            this.ctx.strokeStyle = '#d1d8e0'; 
             this.ctx.lineWidth = 4;
             this.ctx.beginPath();
             this.ctx.moveTo(lad.x, yTopL);
@@ -86,7 +95,6 @@ export class GameRenderer {
             this.ctx.lineTo(lad.x + lad.w, yBotR);
             this.ctx.stroke();
 
-            // 3. Barreaux (répartis sur la hauteur réelle)
             this.ctx.lineWidth = 3;
             const centerTopY = (yTopL + yTopR) / 2;
             const centerBotY = (yBotL + yBotR) / 2;
@@ -94,15 +102,12 @@ export class GameRenderer {
 
             for (let i = 15; i < ladH - 5; i += 20) {
                 const barY = centerTopY + i;
-
-                // Ombre du barreau
                 this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
                 this.ctx.beginPath();
                 this.ctx.moveTo(lad.x, barY + 2);
                 this.ctx.lineTo(lad.x + lad.w, barY + 2);
                 this.ctx.stroke();
 
-                // Métal du barreau
                 this.ctx.strokeStyle = '#a5b1c2';
                 this.ctx.beginPath();
                 this.ctx.moveTo(lad.x, barY);
@@ -110,19 +115,79 @@ export class GameRenderer {
                 this.ctx.stroke();
             }
         });
+        this.ctx.restore();
+    }
 
+    drawBrokenLadders() {
+        this.ctx.save();
+        this.brokenLadders.forEach(lad => {
+            const yTopL = this.getPlatformY(lad.topIndex, lad.x);
+            const yBotL = this.getPlatformY(lad.bottomIndex, lad.x);
+            const yTopR = this.getPlatformY(lad.topIndex, lad.x + lad.w);
+            const yBotR = this.getPlatformY(lad.bottomIndex, lad.x + lad.w);
+
+            const centerTopY = (yTopL + yTopR) / 2;
+            const centerBotY = (yBotL + yBotR) / 2;
+            const ladH = centerBotY - centerTopY;
+            const tailleBout = ladH * 0.3; 
+
+            const drawSegment = (startY, endY) => {
+                const ratioStart = (startY - centerTopY) / ladH;
+                const ratioEnd = (endY - centerTopY) / ladH;
+                const segTopL = yTopL + (yBotL - yTopL) * ratioStart;
+                const segTopR = yTopR + (yBotR - yTopR) * ratioStart;
+                const segBotL = yTopL + (yBotL - yTopL) * ratioEnd;
+                const segBotR = yTopR + (yBotR - yTopR) * ratioEnd;
+
+                this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+                this.ctx.lineWidth = 4;
+                this.ctx.beginPath();
+                this.ctx.moveTo(lad.x + 3, segTopL + 3);
+                this.ctx.lineTo(lad.x + 3, segBotL + 3);
+                this.ctx.moveTo(lad.x + lad.w + 3, segTopR + 3);
+                this.ctx.lineTo(lad.x + lad.w + 3, segBotR + 3);
+                this.ctx.stroke();
+
+                this.ctx.strokeStyle = '#d1d8e0'; 
+                this.ctx.lineWidth = 4;
+                this.ctx.beginPath();
+                this.ctx.moveTo(lad.x, segTopL);
+                this.ctx.lineTo(lad.x, segBotL);
+                this.ctx.moveTo(lad.x + lad.w, segTopR);
+                this.ctx.lineTo(lad.x + lad.w, segBotR);
+                this.ctx.stroke();
+
+                this.ctx.lineWidth = 3;
+                for (let i = 15; i < ladH - 5; i += 20) {
+                    const barY = centerTopY + i;
+                    if (barY >= startY && barY <= endY) {
+                        this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(lad.x, barY + 2);
+                        this.ctx.lineTo(lad.x + lad.w, barY + 2);
+                        this.ctx.stroke();
+                        this.ctx.strokeStyle = '#a5b1c2';
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(lad.x, barY);
+                        this.ctx.lineTo(lad.x + lad.w, barY);
+                        this.ctx.stroke();
+                    }
+                }
+            };
+            drawSegment(centerTopY, centerTopY + tailleBout);
+            drawSegment(centerBotY - tailleBout, centerBotY);
+        });
         this.ctx.restore();
     }
 
     drawPlatforms() {
-        this.ctx.lineWidth = 1;
+        this.ctx.lineWidth = 1; 
         this.platforms.forEach(plat => {
             const x1 = plat.x;
             const y1 = plat.y;
             const x2 = plat.x + plat.w;
             const y2 = plat.y + plat.slope;
 
-            // Ombre
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
             this.ctx.beginPath();
             this.ctx.moveTo(x1 + 4, y1 + 4);
@@ -131,7 +196,6 @@ export class GameRenderer {
             this.ctx.lineTo(x1 + 4, y1 + plat.h + 4);
             this.ctx.fill();
 
-            // Corps Inox
             let grad = this.ctx.createLinearGradient(x1, y1, x1, y1 + plat.h);
             grad.addColorStop(0, '#d1d8e0'); grad.addColorStop(1, '#778ca3');
             this.ctx.fillStyle = grad;
@@ -140,7 +204,6 @@ export class GameRenderer {
             this.ctx.lineTo(x2, y2 + plat.h); this.ctx.lineTo(x1, y1 + plat.h);
             this.ctx.fill();
 
-            // Bordure fine originale
             this.ctx.strokeStyle = '#4b6584';
             this.ctx.stroke();
         });
@@ -148,38 +211,57 @@ export class GameRenderer {
 
     draw(allPlayers = {}) {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-        // Ordre important : Échelles d'abord, plateformes par-dessus
+        
         this.drawLadders();
+        this.drawBrokenLadders(); 
         this.drawPlatforms();
 
-        // ==========================================
-        // --- DESSIN DU CHEF (Animation ttes les 2s) ---
-        // ==========================================
-        if (Date.now() - this.lastChefSwap > 2000) {
-            this.chefFrame = this.chefFrame === 0 ? 1 : 0;
+        // FROMAGE DE SELMA
+        if (this.imgFromage.complete && this.imgFromage.naturalWidth > 0) {
+            const fw = 100; 
+            const echelleFromage = fw / this.imgFromage.naturalWidth; 
+            const fh = this.imgFromage.naturalHeight * echelleFromage;
+            const platFromage = this.platforms[6];
+            const decalageX = 10;
+            const fromX = platFromage.x + decalageX; 
+            const decalageY = 21; 
+            const fromY = this.getPlatformY(6, fromX + fw / 2) - fh + decalageY;
+            this.ctx.drawImage(this.imgFromage, fromX, fromY, fw, fh);
+        }
+
+        // ANIMATION CHEF
+        if (Date.now() - this.lastChefSwap > 3000) {
+            this.chefFrame = this.chefFrame + 1;
+            if (this.chefFrame >= 3) {
+                this.chefFrame = 0;
+            }
             this.lastChefSwap = Date.now();
         }
 
-        const currentChefImg = this.chefFrame === 0 ? this.imgChef1 : this.imgChef2;
+        const chefImages = [this.imgChef3, this.imgChef2, this.imgChef1];
+        const currentChefImg = chefImages[this.chefFrame];
 
         if (currentChefImg && currentChefImg.complete && currentChefImg.naturalWidth > 0) {
-            const echelle = 0.7;
+            let echelle = 0.8;
+            let decalagePieds = 4;
+
+            if (this.chefFrame === 1) { echelle = 0.95; decalagePieds = 8; }
+            if (this.chefFrame === 2) { echelle = 0.75; decalagePieds = 2; }
+
             const cw = currentChefImg.naturalWidth * echelle;
             const ch = currentChefImg.naturalHeight * echelle;
             const platSommet = this.platforms[5];
-            const chefX = platSommet.x + 70;
-            const chefY = this.getPlatformY(5, chefX + cw / 2) - ch;
+            const chefX = platSommet.x + 120; 
+            const chefY = this.getPlatformY(5, chefX + cw / 2) - ch + decalagePieds;
 
             this.ctx.drawImage(currentChefImg, chefX, chefY, cw, ch);
         }
 
         // ==========================================
-        // --- DESSIN DE TOUS LES JOUEURS ---
-        // (La réalité est dictée par ton server.js)
+        // --- DESSIN DES JOUEURS (Dicté par le serveur) ---
         // ==========================================
         Object.values(allPlayers).forEach(p => {
-            if (!p.color) p.color = 'gray'; // Sécurité
+            if (!p.color) p.color = 'gray'; 
 
             if (!allSkinsIdle[p.color]) {
                 allSkinsIdle[p.color] = new Image();
@@ -190,15 +272,18 @@ export class GameRenderer {
                 allSkinsRun[p.color].src = `assets/rat_run_${p.color}.png`;
             }
 
-            // On utilise "isMoving" envoyé par le serveur
             const skin = p.isMoving ? allSkinsRun[p.color] : allSkinsIdle[p.color];
 
             if (skin && skin.complete && skin.naturalWidth > 0) {
-                const ow = skin.naturalWidth;
+                const ow = skin.naturalWidth; 
                 const oh = skin.naturalHeight;
-
+                
                 this.ctx.save();
-                if (p.direction === 1) {
+                
+                // ⚠️ CORRECTION DIRECTION DU RAT 
+                // Inversion quand le joueur va à droite (direction === 1)
+                // (Car l'image de base du rat regarde vers la gauche)
+                if (p.direction === 1) { 
                     this.ctx.translate(p.x + ow / 2, p.y + oh / 2);
                     this.ctx.scale(-1, 1);
                     this.ctx.drawImage(skin, -ow / 2, -oh / 2, ow, oh);
@@ -207,11 +292,10 @@ export class GameRenderer {
                 }
                 this.ctx.restore();
 
-                // Pseudo simple
                 this.ctx.fillStyle = "white";
                 this.ctx.font = "bold 14px Arial";
                 this.ctx.textAlign = "center";
-                this.ctx.fillText(p.pseudo || "Rat", p.x + ow / 2, p.y - 10);
+                this.ctx.fillText(p.pseudo || "Rat", p.x + ow/2, p.y - 10);
             }
         });
 
@@ -221,29 +305,35 @@ export class GameRenderer {
 
     triggerExplosion(x, y, type) { this.vfx.createExplosion(x, y, type); }
 
-    // ==========================================
-    // --- CONTRÔLES : ENVOI AU SERVEUR ---
-    // ==========================================
+    // ⚠️ CONTRÔLES : ENVOI AU SERVEUR UNIQUEMENT
     setupTestControls() {
         window.addEventListener('keydown', (e) => {
             const key = e.key.toLowerCase();
-            // On envoie la VITESSE voulue au Wasm du serveur
-            if (key === 'd' || key === 'arrowright') {
-                this.socket.emit('playerInput', { action: 'move', vx: 200 });
+            
+            if (key === 'd' || key === 'arrowright') { 
+                this.socket.emit('playerInput', { action: 'move', vx: 200 }); 
             }
-            if (key === 'q' || key === 'a' || key === 'arrowleft') {
-                this.socket.emit('playerInput', { action: 'move', vx: -200 });
+            if (key === 'q' || key === 'a' || key === 'arrowleft') { 
+                this.socket.emit('playerInput', { action: 'move', vx: -200 }); 
             }
-            if (key === ' ' || key === 'spacebar') { // Espace pour sauter
+            if (key === 'z' || key === 'w' || key === 'arrowup') { 
+                this.socket.emit('playerInput', { action: 'move_v', vy: -200 }); 
+            }
+            if (key === 's' || key === 'arrowdown') { 
+                this.socket.emit('playerInput', { action: 'move_v', vy: 200 }); 
+            }
+            if (key === ' ' || key === 'spacebar') { 
                 this.socket.emit('playerInput', { action: 'jump' });
             }
         });
 
         window.addEventListener('keyup', (e) => {
             const key = e.key.toLowerCase();
-            // Quand on lâche la touche, on dit au Wasm de s'arrêter
             if (['d', 'q', 'a', 'arrowright', 'arrowleft'].includes(key)) {
-                this.socket.emit('playerInput', { action: 'move', vx: 0 });
+                this.socket.emit('playerInput', { action: 'move', vx: 0 }); 
+            }
+            if (['z', 'w', 's', 'arrowup', 'arrowdown'].includes(key)) {
+                this.socket.emit('playerInput', { action: 'move_v', vy: 0 }); 
             }
         });
     }

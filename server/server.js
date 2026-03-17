@@ -11,35 +11,52 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 // --- CONFIGURATION DES DOSSIERS ---
-app.use(express.static(path.join(__dirname, '../public')));
-app.use('/assets', express.static(path.join(__dirname, '../public/assets')));
+app.use(express.static(path.join(__dirname, '../Public')));
 
 // 2. INITIALISATION DE L'UNIVERS PHYSIQUE WASM
-const world = new World(1980.0, 580.0); // Gravité, Niveau du sol
+// ⚠️ CORRECTION MAJEURE : Le sol du Wasm est abaissé à 850 (le canvas fait 900 de haut)
+const world = new World(1980.0, 850.0); 
 
-// /!\ N'oublie pas de rajouter tes plateformes ici quand Selma aura le Level Design
-// world.add_platform(100, 400, 200, 20); 
+// --- AJOUT DES PLATEFORMES (Alignées sur le Canvas de Selma) ---
+const LEVEL_WIDTH = 900; 
+function addWasmSlope(start_x, start_y, width, thickness, slope) {
+    // On simule les pentes par des plateformes plates au milieu de la pente
+    const midY = start_y + (slope / 2);
+    world.add_platform(start_x, midY, width, thickness);
+}
 
-// --- ÉTAT DU SERVEUR ET MÉCANIQUES ---
+addWasmSlope(42, 800, LEVEL_WIDTH - 81, 18, -50); // Bas (0)
+addWasmSlope(42, 620, LEVEL_WIDTH - 254, 18, 45); // Étage 2 (1)
+addWasmSlope(109, 520, LEVEL_WIDTH - 149, 18, -50); // Étage 3 (2)
+addWasmSlope(42, 353, LEVEL_WIDTH - 145, 18, 50); // Étage 4 (3)
+addWasmSlope(42, 275, LEVEL_WIDTH - 83, 18, -65); // Étage 5 (4)
+addWasmSlope(63, 125, LEVEL_WIDTH - 228, 18, 30); // Sommet Chef (5)
+world.add_platform(300, 70, 170, 18); // Le fromage ! (6) - Plateforme plate
+
+// --- DÉFINITION DES ÉCHELLES DE SELMA ---
+const serverLadders = [
+    { x: 600, w: 30, y_top: 659, y_bottom: 768 }, 
+    { x: 150, w: 30, y_top: 507, y_bottom: 631 }, 
+    { x: 650, w: 30, y_top: 386, y_bottom: 483 }, 
+    { x: 100, w: 30, y_top: 285, y_bottom: 360 }, // Échelle 4
+    { x: 600, w: 30, y_top: 130, y_bottom: 226 }, // Échelle 5
+    { x: 420, w: 30, y_top: 70, y_bottom: 125 }   // Échelle Fromage
+];
+
+// --- ÉTAT DU SERVEUR ---
 const players = {};
-const playerWasmIds = {}; // Dictionnaire de traduction Socket.io <-> Wasm
+const playerWasmIds = {};
 const MAX_PLAYERS = 4;
 
-let gameConfig = {
-    nbPlayers: 2,
-    modeAmi: true,
-    isStarted: false
-};
-
-// Objets du jeu
+let gameConfig = { nbPlayers: 2, modeAmi: true, isStarted: false };
 let tomatoes = [];
 let nextTomatoId = 1;
 let levers = { lever1: false, lever2: false };
 
-// --- BOUCLE DE GÉNÉRATION DES TOMATES (Toutes les 2 secondes) ---
+// --- GÉNÉRATION DES TOMATES ---
 setInterval(() => {
     if (!gameConfig.isStarted || Object.keys(players).length === 0) return;
-    if (tomatoes.length >= 10) return; // Max 10 tomates
+    if (tomatoes.length >= 10) return; 
 
     const newTomato = {
         id: nextTomatoId++,
@@ -56,19 +73,16 @@ setInterval(() => {
 io.on('connection', (socket) => {
     console.log(`Nouveau rat connecté : ${socket.id}`);
 
-    // LOGIC: LOGIN
     socket.on('login', (data) => {
-        const playersCount = Object.keys(players).length;
-
-        if (playersCount >= MAX_PLAYERS) {
+        if (Object.keys(players).length >= MAX_PLAYERS) {
             socket.emit('loginFailed', 'La cuisine est pleine ! (4 rats max)');
             return;
         }
 
-        const isChef = playersCount === 0;
-
-        // ON AJOUTE LE JOUEUR DANS LE WASM
-        const wasmId = world.add_player(100, 100, 30, 30); // x, y, largeur, hauteur
+        const isChef = Object.keys(players).length === 0;
+        
+        // ⚠️ CORRECTION SPAWN : On fait spawner le joueur tout en bas (X: 100, Y: 750)
+        const wasmId = world.add_player(100, 750, 30, 30); 
         playerWasmIds[socket.id] = wasmId;
 
         players[socket.id] = {
@@ -76,22 +90,22 @@ io.on('connection', (socket) => {
             pseudo: data.pseudo || 'Anonyme',
             color: data.color || 'gray',
             isAdmin: isChef,
-            wasmId: wasmId
+            wasmId: wasmId,
+            direction: 1, 
+            vx: 0,
+            vy_input: 0,
+            isOverLadder: false
         };
 
-        // Envoi des infos au nouveau joueur
         socket.emit('loginSuccess', players[socket.id]);
         socket.emit('currentPlayers', players);
         socket.emit('configUpdated', gameConfig);
         socket.emit('currentTomatoes', tomatoes);
         socket.emit('currentLevers', levers);
 
-        // Prévenir les autres
         socket.broadcast.emit('newPlayer', players[socket.id]);
-        console.log(`${players[socket.id].pseudo} est entré (Chef: ${isChef})`);
     });
 
-    // LOBBY : SYNCHRONISATION DES RÉGLAGES
     socket.on('updateConfig', (newConfig) => {
         if (players[socket.id] && players[socket.id].isAdmin) {
             gameConfig = { ...gameConfig, ...newConfig };
@@ -99,51 +113,52 @@ io.on('connection', (socket) => {
         }
     });
 
-    // LOBBY : LE TOP DÉPART
     socket.on('requestStart', () => {
         if (players[socket.id] && players[socket.id].isAdmin) {
             gameConfig.isStarted = true;
             io.emit('gameStarted', gameConfig);
-            console.log("🚀 Le Chef a lancé le service !");
         }
     });
 
-    // COOP : INTERACTION LEVIER
     socket.on('toggleLever', (leverId) => {
         if (!players[socket.id] || levers[leverId] === undefined) return;
-
-        levers[leverId] = !levers[leverId]; // Inverse l'état
-        console.log(`Levier ${leverId} basculé: ${levers[leverId]} par ${players[socket.id].pseudo}`);
+        levers[leverId] = !levers[leverId]; 
         io.emit('leverStateChanged', { leverId, state: levers[leverId] });
     });
 
-    // GAMEPLAY : RÉCEPTION DES INPUTS (Le client n'envoie plus de X/Y)
+    // --- GAMEPLAY : RÉCEPTION DES INPUTS ---
     socket.on('playerInput', (data) => {
         let wasmId = playerWasmIds[socket.id];
-        if (wasmId === undefined) return;
+        let player = players[socket.id];
+        if (wasmId === undefined || !player) return;
 
         if (data.action === 'move') {
-            world.set_player_vx(wasmId, data.vx); // Ex: 200 pour droite, -200 pour gauche, 0 pour stop
+            world.set_player_vx(wasmId, data.vx); 
+            player.vx = data.vx; 
+            
+            // Mise à jour direction
+            if (data.vx > 0) player.direction = 1;
+            else if (data.vx < 0) player.direction = -1;
+
+        } else if (data.action === 'move_v') {
+            player.vy_input = data.vy; // Grimpe
+
         } else if (data.action === 'jump') {
-            world.player_jump(wasmId, 450); // Force du saut
+            world.player_jump(wasmId, 450); 
         }
     });
 
-    // DÉCONNEXION
     socket.on('disconnect', () => {
         if (players[socket.id]) {
-            console.log(`${players[socket.id].pseudo} a quitté la brigade.`);
             const wasAdmin = players[socket.id].isAdmin;
-
             delete players[socket.id];
-            delete playerWasmIds[socket.id]; // On le retire de notre dico Wasm
+            delete playerWasmIds[socket.id]; 
 
             if (Object.keys(players).length === 0) {
                 gameConfig.isStarted = false;
-                tomatoes = []; // On nettoie les tomates
+                tomatoes = []; 
             } else if (wasAdmin) {
-                const remainingIds = Object.keys(players);
-                players[remainingIds[0]].isAdmin = true;
+                players[Object.keys(players)[0]].isAdmin = true;
             }
 
             io.emit('playerDisconnected', socket.id);
@@ -156,44 +171,68 @@ io.on('connection', (socket) => {
 setInterval(() => {
     if (!gameConfig.isStarted) return;
 
-    // 1. On fait avancer la physique des joueurs (Wasm)
+    // 1. Logique des échelles (Avant la physique)
+    for (let socketId in players) {
+        const player = players[socketId];
+        const wasmId = player.wasmId;
+        const px = world.get_player_x(wasmId);
+        const py = world.get_player_y(wasmId);
+        
+        player.isOverLadder = false;
+        for(const lad of serverLadders) {
+            // Tolérance X pour attraper l'échelle (px + 15 / px - 15)
+            if (px + 15 > lad.x && px - 15 < lad.x + lad.w && py > lad.y_top - 30 && py < lad.y_bottom) {   
+                player.isOverLadder = true;
+                break;
+            }
+        }
+
+        // GRIMPE ! Utilise la fonction de Fahed
+        if (player.isOverLadder && world.set_player_vy) {
+            world.set_player_vy(wasmId, player.vy_input);
+        }
+    }
+
+    // 2. Physique Wasm
     world.step(1 / 60);
 
-    // 2. On fait avancer les tomates (JS basique car pas dans le Wasm de Fahed)
+    // 3. Tomates (On détruit les tomates plus bas car le sol est à 850)
     if (tomatoes.length > 0) {
         for (let i = tomatoes.length - 1; i >= 0; i--) {
             tomatoes[i].y += tomatoes[i].speed;
-            if (tomatoes[i].y >= 530) {
+            if (tomatoes[i].y >= 850) {
                 io.emit('removeTomato', tomatoes[i].id);
                 tomatoes.splice(i, 1);
             }
         }
     }
 
-    // 3. On prépare le paquet de données à envoyer aux clients
-    const stateToBroadcast = {
-        players: {},
-        // Optionnel: tu pourrais aussi renvoyer la position exacte des tomates ici si tu veux 
-        // être sûr que personne ne désynchronise, mais c'est lourd pour le réseau.
-    };
+    // 4. Préparation des données pour Selma
+    const stateToBroadcast = { players: {} };
 
     for (let socketId in players) {
         let wasmId = playerWasmIds[socketId];
+        let player = players[socketId];
+        
+        let isMovingAnimation = (world.get_player_on_ground(wasmId) && Math.abs(player.vx) > 0) 
+                             || (player.isOverLadder && Math.abs(player.vy_input) > 0);
+
         stateToBroadcast.players[socketId] = {
+            id: socketId,
             x: world.get_player_x(wasmId),
             y: world.get_player_y(wasmId),
-            on_ground: world.get_player_on_ground(wasmId),
-            direction: players[socketId].direction // Si tu as besoin de savoir vers où il regarde
+            pseudo: player.pseudo, 
+            color: player.color,
+            direction: player.direction, 
+            isMoving: isMovingAnimation 
         };
     }
 
-    // 4. On diffuse la réalité à 60 images par seconde
     io.emit('worldState', stateToBroadcast);
 
 }, 1000 / 60);
 
-// --- LANCEMENT ---
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3020;
 server.listen(PORT, () => {
     console.log(`Serveur Multi (Wasm Hardcore) opérationnel sur http://localhost:${PORT}`);
 });
