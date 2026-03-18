@@ -86,7 +86,6 @@ socket.on('configUpdated', (config) => {
         if(extraSlotsContainer) extraSlotsContainer.style.display = 'none';
     } else {
         opt4.classList.add('active'); opt2.classList.remove('active');
-        // 🌟 CORRECTION : 'contents' au lieu de 'block' pour que ça rentre dans la grille 2x2 !
         if(extraSlotsContainer) extraSlotsContainer.style.display = 'contents';
     }
     if(modeAmi) {
@@ -110,19 +109,36 @@ socket.on('gameStarted', (config) => {
     initGameEngine();
 });
 
-// NOUVEAU : Réception de l'état global avec les inputs mémorisés (animation fluide)
 socket.on('worldState', (state) => {
     allPlayers = state.players; 
 });
 
 socket.on('playerDisconnected', (id) => { delete allPlayers[id]; });
 
+// 🌟 NOUVEAU : RÉCEPTION DE LA VICTOIRE (AVEC L'ÉNERVEMENT DU CHEF)
+socket.on('gameWon', (heroName) => {
+    isPaused = true; 
+    clearInterval(window.gameTimer); 
+    
+    const resultTitle = document.getElementById('result-title');
+    if (resultTitle) {
+        if (modeAmi) {
+            // Mode COOP
+            resultTitle.innerHTML = "<span class='text-glow-green'>HOLD-UP RÉUSSI !</span><br><span class='text-shake-red' style='font-size: 1.5rem; display: inline-block; margin-top: 20px;'>LE CHEF EST EN RAGE !</span>";
+        } else {
+            // Mode CHACUN POUR SOI
+            resultTitle.innerHTML = `<span class='text-glow-green'>VICTOIRE DE ${heroName.toUpperCase()} !</span><br><span class='text-shake-red' style='font-size: 1.5rem; display: inline-block; margin-top: 20px;'>IL A PIQUÉ LE FROMAGE !</span>`;
+        }
+    }
+    
+    endGame(true); 
+});
+
 function initGameEngine() {
     const canvas = document.getElementById('gameCanvas');
     resizeCanvas();
 
     if (!renderer) {
-        // Envoi du socket au renderer pour les touches de grimpe
         renderer = new GameRenderer(canvas, selectedColor, socket); 
         function gameLoop() {
             if (!isPaused) renderer.draw(allPlayers);
@@ -153,10 +169,11 @@ function startTestTimer() {
 
 function endGame(isVictory) {
     const resultTitle = document.getElementById('result-title');
-    const finalScoreDisplay = document.getElementById('final-score');
-    const scoreEl = document.getElementById('score');
-    if(resultTitle) resultTitle.innerText = isVictory ? "MISSION RÉUSSIE !" : "BRIGADE VIRÉE !";
-    if(finalScoreDisplay) finalScoreDisplay.innerText = scoreEl ? scoreEl.innerText : "0";
+    
+    // Si défaite par le temps
+    if(resultTitle && !isVictory) {
+        resultTitle.innerHTML = "<span class='text-shake-red'>BRIGADE ÉCRASÉE !</span><br><span style='font-size: 1.5rem; color: #888; display: inline-block; margin-top: 20px; text-shadow: none; animation: none;'>PAS DE FROMAGE CE SOIR...</span>";
+    }
     showScreen('screen-result');
 }
 

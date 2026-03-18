@@ -200,7 +200,6 @@ setInterval(() => {
         let wasmId = playerWasmIds[socketId];
         let player = players[socketId];
         
-        // ⚠️ NOUVEAU : Séparation précise de la course et de la grimpe
         let onGround = world.get_player_on_ground(wasmId);
         let isMovingAnimation = onGround && Math.abs(player.vx) > 0;
         let isClimbingAnimation = player.isOverLadder && (!onGround || Math.abs(player.vy_input) > 0);
@@ -213,9 +212,44 @@ setInterval(() => {
             color: player.color,
             direction: player.direction, 
             isMoving: isMovingAnimation,
-            isClimbing: isClimbingAnimation, // ⚠️ On envoie ça à Selma !
+            isClimbing: isClimbingAnimation,
             on_ground: onGround
         };
+    }
+
+    // 🌟 CORRECTION : CONDITIONS DE VICTOIRE (COOP vs ENNEMI) 🌟
+    let ratsOnCheese = 0;
+    let firstRatPseudo = "";
+    let totalRats = Object.keys(players).length;
+
+    for (let socketId in players) {
+        let wasmId = playerWasmIds[socketId];
+        let px = world.get_player_x(wasmId);
+        let py = world.get_player_y(wasmId);
+        
+        // On vérifie si ce rat est sur le fromage
+        if (px < 400 && px > 290 && py < 50) {
+            ratsOnCheese++;
+            if (ratsOnCheese === 1) {
+                firstRatPseudo = players[socketId].pseudo; // On enregistre le premier arrivé !
+            }
+        }
+    }
+
+    // Si on a au moins 1 rat en jeu
+    if (totalRats > 0) {
+        // MODE COOP (AMI) : TOUS les rats doivent être sur le fromage !
+        if (gameConfig.modeAmi && ratsOnCheese === totalRats) {
+            io.emit('gameWon', "LA BRIGADE");
+            gameConfig.isStarted = false; // On fige le serveur
+            tomatoes = [];
+        } 
+        // MODE ENNEMI : Le PREMIER rat arrivé déclenche la fin pour tout le monde !
+        else if (!gameConfig.modeAmi && ratsOnCheese > 0) {
+            io.emit('gameWon', firstRatPseudo);
+            gameConfig.isStarted = false; // On fige le serveur
+            tomatoes = [];
+        }
     }
 
     io.emit('worldState', stateToBroadcast);

@@ -15,7 +15,7 @@
                 <span class="white">Chef's</span> <span class="red">Rage</span>
             </h1>
             <div class="menu-box">
-                <p class="label">ENTRE TON NOM DE COMMIS :</p>
+                <p class="label">ENTRE TON NOM :</p>
                 <input type="text" id="pseudo" placeholder="NOM DU RAT..." maxlength="12">
                 
                 <p class="label">CHOISIS TON PELAGE :</p>
@@ -77,7 +77,6 @@
 
         <section id="screen-game" class="screen">
             <div id="hud">
-                <div class="hud-group"><span>SCORE:</span><span id="score">000000</span></div>
                 <div class="hud-group"><span>TIME:</span><span id="timer">3:00</span></div>
             </div>
             <canvas id="gameCanvas"></canvas>
@@ -86,8 +85,6 @@
         <section id="screen-result" class="screen">
             <h2 class="retro-title" id="result-title">FIN DU SERVICE</h2>
             <div class="menu-box">
-                <p class="label">SCORE FINAL :</p>
-                <h3 id="final-score" style="font-size: 2rem; color: #00FF41; text-align: center; margin-bottom: 20px;">0</h3>
                 <button onclick="location.reload()">NOUVEAU SERVICE</button>
             </div>
         </section>
