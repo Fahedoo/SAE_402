@@ -1,5 +1,5 @@
 // ==========================================
-// 1. GESTIONNAIRE DE CLAVIER 
+// 1. GESTIONNAIRE DE CLAVIER (ZQSD + Flèches + E/Espace)
 // ==========================================
 class Clavier {
     constructor() {
@@ -18,7 +18,7 @@ class Clavier {
 }
 
 // ==========================================
-// 2. SIMULATION PHYSIQUE
+// 2. SIMULATION PHYSIQUE DE BASE
 // ==========================================
 class EntitePhysique {
     constructor(x, y) { 
@@ -27,36 +27,37 @@ class EntitePhysique {
     }
     appliquerPhysique() {
         this.x += this.vx; this.y += this.vy;
-        if (this.y < 500 && !this.ignoreGravite) {
-            this.vy += 0.5; // Gravité
+        if (this.y < 800 && !this.ignoreGravite) { // Le sol global est plus bas (Y=800)
+            this.vy += 0.5; // Gravité constante
         }
     }
 }
 
 // ==========================================
-// 3. LOGIQUE DU PERSONNAGE (Préparation Multijoueur)
+// 3. LOGIQUE DU PERSONNAGE (RAT)
 // ==========================================
 class Rat extends EntitePhysique {
     constructor(x, y, idJoueur, couleur) {
         super(x, y);
         this.idJoueur = idJoueur; this.couleur = couleur;
         
-        this.vitesseMarche = 3; this.forceSaut = -8; this.vitesseEscalade = 2; 
+        // --- Réglages de Gameplay ---
+        this.vitesseMarche = 4; this.forceSaut = -10; this.vitesseEscalade = 3; 
         
         this.boostActif = false; this.surRat = false; 
         this.peutSauter = false; this.enEscalade = false;  
         
         this.viesMax = 3; this.vies = this.viesMax; this.framesInvincibilite = 0; 
-        this.estMort = false; // NOUVEAU : État de mort
+        this.estMort = false; 
     }
 
     prendreDegat() {
-        // On ne prend des dégâts que si on est vivant et pas invincible
+        // Invincibilité temporaire après un coup
         if (this.framesInvincibilite <= 0 && !this.estMort) {
             this.vies--; 
-            this.framesInvincibilite = 60; 
+            this.framesInvincibilite = 60; // 1 seconde d'invincibilité à 60 FPS
             if (this.vies <= 0) {
-                this.estMort = true; // On devient spectateur
+                this.estMort = true; 
                 console.log(this.idJoueur + " est K.O. ! Mode Spectateur.");
             }
         }
@@ -67,8 +68,9 @@ class Rat extends EntitePhysique {
     }
     
     declencherSaut() {
+        // Mécanique Coopérative conservée pour tes tests
         if (this.boostActif || this.surRat) {
-            this.vy = this.forceSaut * 1.4; 
+            this.vy = this.forceSaut * 1.5; // Super Saut !
             this.boostActif = false; 
         } else {
             this.vy = this.forceSaut;
@@ -76,11 +78,7 @@ class Rat extends EntitePhysique {
     }
     
     calculerVelocite(touches) {
-        // Si le rat est mort, il ne peut plus bouger !
-        if (this.estMort) {
-            this.vx = 0;
-            return;
-        }
+        if (this.estMort) { this.vx = 0; return; }
 
         if (touches.gauche) this.vx = -this.vitesseMarche;
         else if (touches.droite) this.vx = this.vitesseMarche;
@@ -91,6 +89,7 @@ class Rat extends EntitePhysique {
             else if (touches.bas) this.vy = this.vitesseEscalade;
             else this.vy = 0; 
         } else {
+            // Permet de sauter si on est sur le sol ou une plateforme
             if (touches.saut && this.peutSauter) {
                 this.declencherSaut();
                 touches.saut = false; this.peutSauter = false; 
@@ -101,21 +100,84 @@ class Rat extends EntitePhysique {
 }
 
 // ==========================================
-// 4. OBSTACLES 
+// 4. CLASSES DES OBSTACLES & ITEMS (Nouveautés)
 // ==========================================
-class Obstacle {
-    constructor(x, y, width, height, type) {
-        this.x = x; this.y = y; this.width = width; this.height = height; this.type = type; 
-        this.angle = 0; 
+
+// --- Seul le ROULEAU roule sur les pentes ---
+class Rouleau {
+    constructor(x, y) {
+        this.x = x; this.y = y;
+        // Dimension demandée
+        this.w = 45; this.h = 45;
+        this.vx = 0; this.vy = 0;
+        this.angle = 0;
     }
     bouger() {
-        if (this.type === "rouleau") {
-            this.x -= 2; this.angle -= 0.05; if (this.x < -100) this.x = 850;
-        } else if (this.type === "tomate") {
-            this.x -= 3.5; this.angle -= 0.15; if (this.x < -50) this.x = 850;
-        } else if (this.type === "couteau") {
-            this.y += 5; if (this.y > 600) this.y = -50;
+        this.x += this.vx; this.y += this.vy;
+        this.angle -= 0.05; // Rotation visuelle
+
+        // --- Logique de Pente ---
+        let estSurPlateforme = false;
+        for (let plat of listePlateformes) {
+            // Calcule la hauteur exacte de la plateforme sous le rouleau
+            let ratio = (this.x - plat.x) / plat.w;
+            let hauteurPente = plat.y + (plat.inclinaison * ratio);
+
+            // Vérifie si le rouleau est sur la pente
+            if (this.x + this.w / 2 > plat.x && this.x + this.w / 2 < plat.x + plat.w &&
+                this.y + this.h >= hauteurPente - 5 && this.y + this.h <= hauteurPente + 15) {
+                
+                estSurPlateforme = true;
+                this.y = hauteurPente - this.h;
+                this.vy = 0;
+                
+                // --- Vitesse de glissade aléatoire/variable ---
+                // La direction dépend de la pente (négative = roule à gauche)
+                let accelerationX = (plat.inclinaison / plat.w) * 50; 
+                this.vx = accelerationX; 
+                
+                // Assure une vitesse minimum pour le gameplay
+                if (this.vx > -2 && this.vx <= 0) this.vx = -3;
+                if (this.vx < 2 && this.vx >= 0) this.vx = 3;
+
+                break;
+            }
         }
+
+        if (!estSurPlateforme) {
+            this.vy += 0.5; // Gravité quand il tombe d'une plateforme
+            this.vx *= 0.98; // Ralentissement de l'air
+        }
+    }
+}
+
+// --- La TOMATE tombe du ciel ---
+class TomateTombante {
+    constructor() {
+        this.x = Math.random() * (canvasW - 100) + 50; // Spawn aléatoire en X
+        this.y = -50; // En haut de l'écran
+        // Dimension demandée (plus petite)
+        this.w = 25; this.h = 25; 
+        this.vy = Math.random() * 2 + 3; // Vitesse de chute variable
+    }
+    bouger() { this.y += this.vy; }
+}
+
+// --- Le COUTEAU tombe du ciel ---
+class CouteauTombante {
+    constructor() {
+        this.x = Math.random() * (canvasW - 100) + 50;
+        this.y = -50;
+        this.w = 20; this.h = 60; // Plus haut que large
+        this.vy = 5;
+    }
+    bouger() { this.y += this.vy; }
+}
+
+// --- Le CŒUR (Soin) ---
+class CoeurItem {
+    constructor(x, y) {
+        this.x = x; this.y = y; this.w = 30; this.h = 30;
     }
 }
 
@@ -123,76 +185,143 @@ class Obstacle {
 // 5. DESIGN DU NIVEAU & VARIABLES GLOBALES
 // ==========================================
 const clavier = new Clavier();
-
-// NOUVEAU : On met les joueurs dans une liste. Pour l'instant tu es seul.
-const monRat = new Rat(50, 500, "joueur1", "gris"); 
+// Spawn du rat sur le sol
+const monRat = new Rat(100, 700, "joueur1", "gris"); 
 let listeJoueurs = [monRat]; 
-
 let etatPartie = "EN_COURS"; 
 
+// Dimensions de l'écran de jeu (doit correspondre à ton HTML)
+const canvasW = 900;
+const canvasH = 900;
+
+// --- Plateformes Inclinées ---
+// y de fin = y + inclinaison
 const listePlateformes = [
-    { x: 50, y: 400, w: 250, h: 20 },  { x: 350, y: 300, w: 400, h: 20 },
-    { x: 100, y: 200, w: 300, h: 20 }, { x: 400, y: 100, w: 200, h: 20 }
+    { x: 42, y: 800, w: canvasW-81, h: 18, inclinaison: -50 }, 
+    { x: 42, y: 620, w: canvasW-254, h: 18, inclinaison: 45 }, 
+    { x: 109, y: 520, w: canvasW-149, h: 18, inclinaison: -50 }, 
+    { x: 42, y: 353, w: canvasW-145, h: 18, inclinaison: 50 }, 
+    { x: 42, y: 275, w: canvasW-83, h: 18, inclinaison: -65 }, 
+    { x: 63, y: 125, w: canvasW-228, h: 18, inclinaison: 30 }, 
+    { x: 300, y: 70, w: 170, h: 18, inclinaison: 0 } 
 ];
-const listeEchelles = [{ x: 200, y: 400, width: 30, height: 100 }, { x: 360, y: 200, width: 30, height: 100 }];
-const listeFauxRats = [{ x: 250, y: 350, width: 50, height: 50 }, { x: 200, y: 150, width: 50, height: 50 }];
-let listeZonesBoost = [{ x: 500, y: 460, width: 40, height: 40, actif: true }, { x: 600, y: 260, width: 40, height: 40, actif: true }];
-const listeLeviers = [
-    { x: 80, y: 350, width: 30, height: 50, estActive: false },
-    { x: 650, y: 250, width: 30, height: 50, estActive: false },
-    { x: 120, y: 150, width: 30, height: 50, estActive: false }
-];
-const fromage = { x: 500, y: 60, width: 40, height: 40 };
-const cloche = { x: fromage.x - 10, y: fromage.y - 10, width: fromage.width + 20, height: fromage.height + 20, estOuverte: false };
 
-let listeObstacles = [
-    new Obstacle(800, 460, 40, 40, "rouleau"), new Obstacle(600, 280, 20, 20, "tomate"), new Obstacle(400, -50, 15, 40, "couteau")
+// Helper pour calculer le Y exact d'une pente à un X précis
+function getPlatformY(plat, targetX) {
+    let ratio = (targetX - plat.x) / plat.w;
+    return plat.y + (plat.inclinaison * ratio);
+}
+
+// Échelles calées sur les pentes inclinées
+const listeEchelles = [
+    { x: 610, w: 30, yTop: getPlatformY(listePlateformes[1], 610), yBot: getPlatformY(listePlateformes[0], 610) },
+    { x: 168, w: 30, yTop: getPlatformY(listePlateformes[2], 168), yBot: getPlatformY(listePlateformes[1], 168) },
+    { x: 668, w: 30, yTop: getPlatformY(listePlateformes[3], 668), yBot: getPlatformY(listePlateformes[2], 668) }
 ];
-let bonusSoin = { x: 450, y: 460, width: 30, height: 30, actif: true };
+
+// Zone cooperative (Saut Boosté)
+let listeZonesBoost = [{ x: 400, y: 750, width: 60, height: 40, actif: true }];
+
+// Listes d'obstacles
+let listeRouleaux = [];
+let listeTomates = [];
+let listeCouteaux = [];
+let listeCoeurs = [];
 
 // ==========================================
-// 6. CHARGEMENT DES SPRITES
+// 6. SYSTÈME DE SPAWN (Le Hasard demandée)
 // ==========================================
-const spriteRat = new Image(); spriteRat.src = '../assets/sprites/rats/rat_cours.png'; 
-const spriteRouleau = new Image(); spriteRouleau.src = '../assets/sprites/items/Rouleau.png'; 
-const spriteTomate = new Image(); spriteTomate.src = '../assets/sprites/items/tomate.gif';    
-const spriteCouteau = new Image(); spriteCouteau.src = '../assets/sprites/items/couteaux.png'; 
-const spriteFromage = new Image(); spriteFromage.src = '../assets/sprites/items/fromagewin.png'; 
+const BOSS_SPAWN = { x: 750, y: 50 }; // Haut à droite
 
-const canvas = document.getElementById("ecranDeJeu");
+// --- 6.1 Hasard des ROULEAUX (Rafales à espacements aléatoires) ---
+function spawnRafaleRouleaux() {
+    if (etatPartie !== "EN_COURS") return;
+    
+    let nbDansLaRafale = Math.floor(Math.random() * 3) + 1; // 1 à 3 rouleaux par rafale
+    let rouleauxLances = 0;
+
+    function lancerProchain() {
+        if (rouleauxLances < nbDansLaRafale && etatPartie === "EN_COURS") {
+            listeRouleaux.push(new Rouleau(BOSS_SPAWN.x, BOSS_SPAWN.y));
+            rouleauxLances++;
+            
+            // --- ESPACEMENT ALÉATOIRE demandée ---
+            // Parfois très rapproché (200ms), parfois espacé (1500ms)
+            let tempsAttente = Math.random() * (1500 - 200) + 200; 
+            if (rouleauxLances < nbDansLaRafale) {
+                setTimeout(lancerProchain, tempsAttente);
+            }
+        }
+    }
+    lancerProchain();
+}
+// Lance une nouvelle rafale toutes les 6 secondes
+setInterval(spawnRafaleRouleaux, 6000);
+
+
+// --- 6.2 Spawn des Tomates Tombantes ---
+setInterval(() => {
+    if (etatPartie === "EN_COURS") listeTomates.push(new TomateTombante());
+}, 4000); // Une tomate toutes les 4s
+
+
+// --- 6.3 Spawn des Couteaux Tombants ---
+setInterval(() => {
+    if (etatPartie === "EN_COURS") listeCouteaux.push(new CouteauTombante());
+}, 5000); // Un couteau toutes les 5s
+
+
+// --- 6.4 Spawn des CŒURS (Limitée à 3) ---
+setInterval(() => {
+    if (etatPartie === "EN_COURS" && listeCoeurs.length < 3) {
+        const plat = listePlateformes[Math.floor(Math.random() * listePlateformes.length)];
+        // Spawn juste au dessus de la pente inclinée
+        const rx = plat.x + Math.random() * (plat.w - 50);
+        const ry = getPlatformY(plat, rx) - 30;
+        listeCoeurs.push(new CoeurItem(rx, ry));
+    }
+}, 10000);
+
+
+// ==========================================
+// 7. CHARGEMENT DES SPRITES (Intégré !)
+// ==========================================
+const imgRouleau = new Image(); imgRouleau.src = '../assets/rouleau.png';
+const imgTomate = new Image(); imgTomate.src = '../assets/tomate.gif';
+const imgCouteau = new Image(); imgCouteau.src = '../assets/couteaux.png';
+const imgCoeur = new Image(); imgCoeur.src = '../assets/coeur.png';
+
+const canvas = document.getElementById("ecranDeJeu") || document.querySelector("canvas");
 const ctx = canvas.getContext("2d");
 
 // ==========================================
-// 7. BOUCLE DE JEU
+// 8. BOUCLE DE JEU PRINCIPALE
 // ==========================================
 function boucleDeJeu() {
-    // --- VÉRIFICATION GAME OVER MULTIJOUEUR ---
+    // --- VÉRIFICATION GAME OVER (continue tant que qlq est en vie) ---
     let tousMorts = true;
     for (let joueur of listeJoueurs) {
-        if (!joueur.estMort) {
-            tousMorts = false;
-            break;
-        }
+        if (!joueur.estMort) { tousMorts = false; break; }
     }
-    if (tousMorts && etatPartie === "EN_COURS") {
-        etatPartie = "DEFAITE";
-    }
+    if (tousMorts && etatPartie === "EN_COURS") etatPartie = "DEFAITE";
 
+    // Mouvements Rat
     if (etatPartie === "EN_COURS") monRat.calculerVelocite(clavier.touches);
     else monRat.vx = 0; 
     
     monRat.appliquerPhysique();
 
-    // Si on est mort, on arrête de gérer les collisions pour ce joueur
+    // Logic Collisions si Rat vivant
     if (!monRat.estMort) {
-        monRat.peutSauter = false; monRat.surRat = false; 
-        const boiteRat = { x: monRat.x, y: monRat.y - 50, w: 50, h: 50 };
+        monRat.peutSauter = false;
+        // Boîte de collision rat précise (30x30)
+        const boiteRat = { x: monRat.x, y: monRat.y, w: 30, h: 30 }; 
 
-        // --- ÉCHELLES ---
+        // --- COLLISION ÉCHELLES ---
         let toucheEchelle = false;
-        for (let echelle of listeEchelles) {
-            if (boiteRat.x < echelle.x + echelle.width && boiteRat.x + boiteRat.w > echelle.x &&
-                boiteRat.y < echelle.y + echelle.height && boiteRat.y + boiteRat.h > echelle.y) {
+        for (let ech of listeEchelles) {
+            if (boiteRat.x < ech.x + ech.w && boiteRat.x + boiteRat.w > ech.x &&
+                boiteRat.y < ech.yBot && boiteRat.y + boiteRat.h > ech.yTop) {
                 toucheEchelle = true;
                 if (!monRat.enEscalade && (clavier.touches.saut || clavier.touches.bas)) {
                     monRat.enEscalade = true; monRat.ignoreGravite = true; 
@@ -201,166 +330,167 @@ function boucleDeJeu() {
         }
         if (!toucheEchelle) { monRat.enEscalade = false; monRat.ignoreGravite = false; }
 
-        // --- COLLISIONS ---
-        if (monRat.y >= 500) { monRat.y = 500; monRat.vy = 0; monRat.peutSauter = true; }
-
-        if (!monRat.enEscalade) {
+        // --- COLLISION PLATEFORMES INCLINÉES ---
+        if (!monRat.enEscalade && monRat.vy >= 0) {
+            let surPlateforme = false;
             for (let plat of listePlateformes) {
-                if (monRat.vy >= 0 && monRat.y >= plat.y && monRat.y <= plat.y + 20 &&
-                    monRat.x + 50 > plat.x && monRat.x < plat.x + plat.w) {
-                    monRat.y = plat.y; monRat.vy = 0; monRat.peutSauter = true;
-                }
-            }
-            for (let fRat of listeFauxRats) {
-                let aligne = (monRat.x < fRat.x + fRat.width && monRat.x + 50 > fRat.x);
-                if (monRat.vy >= 0 && monRat.y >= fRat.y && monRat.y <= fRat.y + 20 && aligne) {
-                    monRat.y = fRat.y; monRat.vy = 0; monRat.peutSauter = true; monRat.surRat = true; 
-                }
-            }
-        }
-
-        // --- ZONES BOOST ---
-        for (let zone of listeZonesBoost) {
-            if (zone.actif && boiteRat.x < zone.x + zone.width && boiteRat.x + boiteRat.w > zone.x &&
-                boiteRat.y < zone.y + zone.height && boiteRat.y + boiteRat.h > zone.y) {
-                monRat.boostActif = true; zone.actif = false; 
-            }
-        }
-
-        // --- LEVIERS ---
-        let texteActionAffiche = false; let texteActionX = 0, texteActionY = 0;
-        for (let lev of listeLeviers) {
-            if (!lev.estActive) {
-                const margeInter = 30; 
-                if (boiteRat.x < lev.x + lev.width + margeInter && boiteRat.x + boiteRat.w > lev.x - margeInter &&
-                    boiteRat.y < lev.y + lev.height + margeInter && boiteRat.y + boiteRat.h > lev.y - margeInter) {
-                    texteActionAffiche = true; texteActionX = lev.x; texteActionY = lev.y;
-                    if (clavier.touches.action) {
-                        lev.estActive = true; clavier.touches.action = false; 
+                let rxCentre = monRat.x + boiteRat.w / 2;
+                if (rxCentre >= plat.x && rxCentre <= plat.x + plat.w) {
+                    let yPente = getPlatformY(plat, rxCentre);
+                    // Tolérance d'atterrissage sur la pente
+                    if (monRat.y + boiteRat.h >= yPente - 10 && monRat.y + boiteRat.h <= yPente + 15) {
+                        monRat.y = yPente - boiteRat.h;
+                        monRat.vy = 0;
+                        monRat.peutSauter = true;
+                        surPlateforme = true;
+                        break;
                     }
                 }
             }
+            // Sol global de secours (Y=800)
+            if (!surPlateforme && monRat.y + boiteRat.h >= 800) { 
+                monRat.y = 800 - boiteRat.h; 
+                monRat.vy = 0; monRat.peutSauter = true; 
+            } 
         }
 
-        // --- OBSTACLES & SOIN ---
-        if (etatPartie === "EN_COURS") {
-            for (let obs of listeObstacles) {
-                if (boiteRat.x < obs.x + obs.width && boiteRat.x + boiteRat.w > obs.x &&
-                    boiteRat.y < obs.y + obs.height && boiteRat.y + boiteRat.h > obs.y) {
-                    monRat.prendreDegat();
+        // --- COLLISION ZONE BOOST Conserveé ---
+        for (let zone of listeZonesBoost) {
+            if (zone.actif && boiteRat.x < zone.x + zone.width && boiteRat.x + boiteRat.w > zone.x &&
+                boiteRat.y < zone.y + zone.height && boiteRat.y + boiteRat.h > zone.y) {
+                monRat.boostActif = true; // Prochain saut sera un Super Saut !
+            }
+        }
+
+        // --- COLLISION DÉGÂTS (Rouleaux, Tomates, Couteaux) ---
+        for (let obs of listeRouleaux) {
+            if (checkCollisionAABB(boiteRat, obs)) monRat.prendreDegat();
+        }
+        for (let t of listeTomates) {
+            if (checkCollisionAABB(boiteRat, t)) monRat.prendreDegat();
+        }
+        for (let c of listeCouteaux) {
+            if (checkCollisionAABB(boiteRat, c)) monRat.prendreDegat();
+        }
+
+        // --- COLLISION CŒURS (Soin si < maxVies) ---
+        for (let i = listeCoeurs.length - 1; i >= 0; i--) {
+            let c = listeCoeurs[i];
+            if (checkCollisionAABB(boiteRat, c)) {
+                if(monRat.vies < monRat.viesMax) {
+                    monRat.soigner();
+                    listeCoeurs.splice(i, 1);
                 }
             }
-            if (bonusSoin.actif && boiteRat.x < bonusSoin.x + bonusSoin.width && boiteRat.x + boiteRat.w > bonusSoin.x &&
-                boiteRat.y < bonusSoin.y + bonusSoin.height && boiteRat.y + boiteRat.h > bonusSoin.y) {
-                monRat.soigner(); bonusSoin.actif = false; 
-            }
         }
+    } // Fin Si Pas Mort
 
-        // --- VICTOIRE ---
-        if (etatPartie === "EN_COURS" && cloche.estOuverte &&
-            boiteRat.x < fromage.x + fromage.width && boiteRat.x + boiteRat.w > fromage.x &&
-            boiteRat.y < fromage.y + fromage.height && boiteRat.y + boiteRat.h > fromage.y) {
-            etatPartie = "VICTOIRE";
-        }
-        
-        // --- AFFICHAGE TEXTE ACTION ---
-        if (texteActionAffiche) {
-            ctx.fillStyle = "white"; ctx.font = "bold 16px Arial"; ctx.fillText("Appuie sur E", texteActionX - 30, texteActionY - 15);
-        }
-    } // Fin de la condition "Si pas mort"
-
-    // Les obstacles bougent toujours, même si on est mort
+    // Mise à jour Objets
     if (etatPartie === "EN_COURS") {
-        for (let obs of listeObstacles) obs.bouger();
+        // Rouleaux
+        for (let i = listeRouleaux.length - 1; i >= 0; i--) {
+            let obs = listeRouleaux[i];
+            obs.bouger();
+            // Nettoyage hors écran
+            if (obs.x < -100 || obs.y > canvasH + 100) listeRouleaux.splice(i, 1);
+        }
+        // Tomates
+        for (let i = listeTomates.length - 1; i >= 0; i--) {
+            let t = listeTomates[i];
+            t.bouger();
+            if (t.y > canvasH) listeTomates.splice(i, 1);
+        }
+        // Couteaux
+        for (let i = listeCouteaux.length - 1; i >= 0; i--) {
+            let c = listeCouteaux[i];
+            c.bouger();
+            if (c.y > canvasH) listeCouteaux.splice(i, 1);
+        }
     }
 
-    // Gestion de la Cloche globale
-    let nbLeviersActifs = listeLeviers.filter(l => l.estActive).length;
-    cloche.estOuverte = (nbLeviersActifs === listeLeviers.length);
 
-
-    // ================== RENDU VISUEL ==================
+    // ================== RENDU VISUEL (Dessin avec Sprites) ==================
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // ctx.fillStyle = "#111"; ctx.fillRect(0, 0, canvas.width, canvas.height); // Fond sombre de secours
 
-    ctx.fillStyle = "#8B4513"; ctx.fillRect(0, 500, canvas.width, 100);
-    ctx.fillStyle = "#CD853F"; for (let plat of listePlateformes) { ctx.fillRect(plat.x, plat.y, plat.w, plat.h); }
+    // 8.1 Dessin des Plateformes Inclinaison
+    ctx.lineWidth = 2;
+    for (let plat of listePlateformes) { 
+        ctx.fillStyle = "#CD853F";
+        ctx.strokeStyle = "#8B4513";
+        // Dessine la forme trapézoïdale de la pente inclinee
+        ctx.beginPath();
+        ctx.moveTo(plat.x, plat.y);
+        ctx.lineTo(plat.x + plat.w, plat.y + plat.inclinaison);
+        ctx.lineTo(plat.x + plat.w, plat.y + plat.inclinaison + plat.h);
+        ctx.lineTo(plat.x, plat.y + plat.h);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+    }
 
+    // 8.2 Dessin des Échelles
     ctx.fillStyle = "#DEB887";
     for (let ech of listeEchelles) { 
-        ctx.fillRect(ech.x, ech.y, ech.width, ech.height); 
-        ctx.fillStyle = "#A0522D";
-        for (let i = ech.y + 10; i < ech.y + ech.height; i += 20) { ctx.fillRect(ech.x, i, ech.width, 5); }
-        ctx.fillStyle = "#DEB887";
+        ctx.fillRect(ech.x, ech.yTop, 5, ech.yBot - ech.yTop); // Montant gauche
+        ctx.fillRect(ech.x + ech.w - 5, ech.yTop, 5, ech.yBot - ech.yTop); // Montant droit
+        for(let i = ech.yTop + 10; i < ech.yBot; i+=20) ctx.fillRect(ech.x, i, ech.w, 4); // Barreaux
     }
 
-    ctx.fillStyle = "#557799"; for (let fRat of listeFauxRats) { ctx.fillRect(fRat.x, fRat.y, fRat.width, fRat.height); }
-
+    // 8.3 Dessin de la Zone Boost (Courte-échelle simulée)
     for (let zone of listeZonesBoost) {
-        if (zone.actif) { ctx.fillStyle = zone.couleur; ctx.fillRect(zone.x, zone.y, zone.width, zone.height); }
+        if (zone.actif) { ctx.fillStyle = "rgba(0, 255, 0, 0.3)"; ctx.fillRect(zone.x, zone.y, zone.width, zone.height); }
     }
 
-    for (let lev of listeLeviers) {
-        ctx.fillStyle = lev.estActive ? "lime" : "red"; ctx.fillRect(lev.x, lev.y, lev.width, lev.height);
-    }
-
-    try { ctx.drawImage(spriteFromage, fromage.x, fromage.y, fromage.width, fromage.height); }
-    catch { ctx.fillStyle = "gold"; ctx.fillRect(fromage.x, fromage.y, fromage.width, fromage.height); }
+    // --- 8.4 DESSIN DES OBSTACLES & ITEMS (Intégration SPRITES) ---
     
-    if (!cloche.estOuverte) {
-        ctx.fillStyle = "rgba(180, 200, 220, 0.85)"; ctx.fillRect(cloche.x, cloche.y, cloche.width, cloche.height);
+    // Cœurs (Soin)
+    for (let c of listeCoeurs) {
+        dessinerSprite(imgCoeur, c.x, c.y, c.w, c.h, "pink");
     }
 
-    for (let obs of listeObstacles) {
-        if (obs.type === "rouleau" || obs.type === "tomate") {
-            ctx.save(); 
-            ctx.translate(obs.x + obs.width / 2, obs.y + obs.height / 2);
-            ctx.rotate(obs.angle); 
-            let img = (obs.type === "rouleau") ? spriteRouleau : spriteTomate;
-            try { ctx.drawImage(img, -obs.width / 2, -obs.height / 2, obs.width, obs.height); } 
-            catch { ctx.fillStyle = (obs.type === "rouleau") ? "saddlebrown" : "red"; ctx.fillRect(-obs.width / 2, -obs.height / 2, obs.width, obs.height); }
-            ctx.restore(); 
-        } else if (obs.type === "couteau") {
-            try { ctx.drawImage(spriteCouteau, obs.x, obs.y, obs.width, obs.height); } 
-            catch { ctx.fillStyle = "silver"; ctx.fillRect(obs.x, obs.y, obs.width, obs.height); }
-        }
+    // Rouleaux Roulants (avec rotation !)
+    for (let obs of listeRouleaux) {
+        dessinerSpriteRotatif(imgRouleau, obs.x, obs.y, obs.w, obs.h, obs.angle, "saddlebrown");
     }
 
-    if (bonusSoin.actif) { ctx.fillStyle = "pink"; ctx.fillRect(bonusSoin.x, bonusSoin.y, bonusSoin.width, bonusSoin.height); }
+    // Tomates Tombantes (Nouveauté : sprite tomate gif utilisé ici)
+    for (let t of listeTomates) {
+        dessinerSprite(imgTomate, t.x, t.y, t.w, t.h, "red");
+    }
 
-    // --- DESSINER TOUS LES JOUEURS ---
+    // Couteaux Tombants
+    for (let c of listeCouteaux) {
+        dessinerSprite(imgCouteau, c.x, c.y, c.w, c.h, "silver");
+    }
+
+    // --- 8.5 Dessin Joueurs (TODO: Intégrer sprite rat quand disponible) ---
     for (let joueur of listeJoueurs) {
-        if (joueur.estMort) {
-            // Effet Spectateur (Fantôme transparent)
-            ctx.globalAlpha = 0.4; 
-        } else if (joueur.framesInvincibilite > 0 && joueur.framesInvincibilite % 10 >= 5) {
-            // Clignotement de dégâts (on ne dessine pas sur cette frame)
-            continue; 
-        }
-
-        try { ctx.drawImage(spriteRat, joueur.x, joueur.y - 50, 50, 50); }
-        catch { ctx.fillStyle = "gray"; ctx.fillRect(joueur.x, joueur.y - 50, 50, 50); }
+        if (joueur.estMort) ctx.globalAlpha = 0.4; // Effet fantôme pour spectateur
+        else if (joueur.framesInvincibilite > 0 && joueur.framesInvincibilite % 10 >= 5) continue; // Clignotement
         
-        ctx.globalAlpha = 1.0; // On remet l'opacité normale pour le reste
+        // --- Carré gris temporaire pour le rat (vu qu'on a pas de sprite rat dans les assets envoyés) ---
+        ctx.fillStyle = joueur.boostActif ? "lime" : "gray"; 
+        ctx.fillRect(joueur.x, joueur.y, 30, 30);
+        
+        ctx.globalAlpha = 1.0; 
     }
 
-    // HUD
-    ctx.fillStyle = "white"; ctx.font = "20px Arial";
-    let texteVies = "Vies : "; 
-    if (monRat.estMort) texteVies = "SPECTATEUR 👻";
-    else for(let i=0; i<monRat.vies; i++) texteVies += "❤️";
-    ctx.fillText(texteVies, 20, 30);
-    ctx.font = "16px Arial"; ctx.fillText(`Leviers : ${nbLeviersActifs}/3`, 20, 55);
-
-    if (monRat.boostActif || monRat.surRat) {
-        ctx.strokeStyle = "lime"; ctx.lineWidth = 3; ctx.strokeRect(monRat.x, monRat.y - 50, 50, 50);
-        ctx.fillStyle = "lime"; ctx.font = "bold 16px Arial"; ctx.fillText("SAUT BOOSTÉ PRÊT !", monRat.x - 30, monRat.y - 60);
+    // --- 8.6 HUD (Vies avec icônes Cœur !) ---
+    ctx.fillStyle = "white"; ctx.font = "bold 20px Arial";
+    ctx.fillText("Vies : ", 20, 30);
+    
+    if (monRat.estMort) {
+        ctx.fillStyle = "red";
+        ctx.fillText("SPECTATEUR 👻", 80, 30);
+    } else {
+        // Dessine des petits sprites cœur pour chaque vie restante demandée
+        for(let i=0; i<monRat.vies; i++) {
+            dessinerSprite(imgCoeur, 80 + (i * 30), 10, 20, 20, "red");
+        }
     }
 
-    if (etatPartie === "VICTOIRE") {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.7)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "gold"; ctx.font = "bold 60px Arial"; ctx.textAlign = "center";
-        ctx.fillText("VICTOIRE !", canvas.width / 2, canvas.height / 2); ctx.textAlign = "left"; 
-    } else if (etatPartie === "DEFAITE") {
+    // Écran Game Over Collectif demandée
+    if (etatPartie === "DEFAITE") {
         ctx.fillStyle = "rgba(100, 0, 0, 0.8)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = "white"; ctx.font = "bold 60px Arial"; ctx.textAlign = "center";
         ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2); ctx.textAlign = "left"; 
@@ -369,4 +499,47 @@ function boucleDeJeu() {
     requestAnimationFrame(boucleDeJeu);
 }
 
+// ==========================================
+// 9. UTILITAIRES DE DESSIN & COLLISION
+// ==========================================
+
+// Collision AABB classique
+function checkCollisionAABB(r1, r2) {
+    return (r1.x < r2.x + r2.w && r1.x + r1.w > r2.x &&
+            r1.y < r2.y + r2.h && r1.y + r1.h > r2.y);
+}
+
+// Helper pour dessiner un sprite avec fallback carré couleur si image pas chargée
+function dessinerSprite(img, x, y, w, h, couleurFallback) {
+    if(img.complete && img.naturalWidth > 0) {
+        ctx.drawImage(img, x, y, w, h);
+    } else {
+        ctx.fillStyle = couleurFallback;
+        ctx.fillRect(x, y, w, h);
+    }
+}
+
+// Helper pour dessiner un sprite rotatif (pour les rouleaux)
+function dessinerSpriteRotatif(img, x, y, w, h, angle, couleurFallback) {
+    if(img.complete && img.naturalWidth > 0) {
+        ctx.save(); 
+        // Se déplace au centre de l'objet pour la rotation
+        ctx.translate(x + w / 2, y + h / 2);
+        ctx.rotate(angle); 
+        // Dessine l'image centrée sur l'origine du canvas actuel
+        ctx.drawImage(img, -w / 2, -h / 2, w, h);
+        ctx.restore(); 
+    } else {
+        // Fallback carré de secours
+        ctx.save();
+        ctx.translate(x + w / 2, y + h / 2);
+        ctx.rotate(angle);
+        ctx.fillStyle = couleurFallback;
+        ctx.fillRect(-w / 2, -h / 2, w, h);
+        ctx.restore();
+    }
+}
+
+
+// Lancement de la boucle de jeu Vanilla JS locale
 boucleDeJeu();
