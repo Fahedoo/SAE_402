@@ -222,7 +222,7 @@ setInterval(() => {
 
 }, 1000 / 60);
 
-const PORT = process.env.PORT || 3020;
+const PORT = process.env.PORT || 3050;
 server.listen(PORT, () => {
     console.log(`Serveur Multi (Wasm Hardcore) opérationnel sur http://localhost:${PORT}`);
 });
