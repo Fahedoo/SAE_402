@@ -48,23 +48,23 @@ const MAX_PLAYERS = 4;
 
 let gameConfig = { nbPlayers: 2, modeAmi: true, isStarted: false };
 let tomatoes = [];
-let nextTomatoId = 1;
+let hearts = []; // 🌟 NOUVEAU : Liste des soins
+let nextItemId = 1;
 let levers = { lever1: false, lever2: false };
 
+// Génération Tomates (Dégâts)
 setInterval(() => {
     if (!gameConfig.isStarted || Object.keys(players).length === 0) return;
-    if (tomatoes.length >= 10) return; 
+    if (tomatoes.length >= 8) return; 
+    tomatoes.push({ id: nextItemId++, x: Math.floor(Math.random() * 800) + 20, y: -20, speed: Math.random() * 2 + 2 });
+}, 1500);
 
-    const newTomato = {
-        id: nextTomatoId++,
-        x: Math.floor(Math.random() * 750) + 20,
-        y: -10,
-        speed: Math.floor(Math.random() * 3) + 2
-    };
-
-    tomatoes.push(newTomato);
-    io.emit('newTomato', newTomato);
-}, 2000);
+// Génération Cœurs (Soins)
+setInterval(() => {
+    if (!gameConfig.isStarted || Object.keys(players).length === 0) return;
+    if (hearts.length >= 2) return; 
+    hearts.push({ id: nextItemId++, x: Math.floor(Math.random() * 800) + 20, y: -20, speed: 1.5 });
+}, 8000);
 
 io.on('connection', (socket) => {
     console.log(`Nouveau rat connecté : ${socket.id}`);
@@ -90,22 +90,21 @@ io.on('connection', (socket) => {
             direction: 1, 
             vx: 0,
             vy_input: 0,
-            isOverLadder: false
+            isOverLadder: false,
+            // 🌟 NOUVEAU : Variables de santé (Inspiré de Loïc)
+            lives: 3,
+            isDead: false,
+            invulnerableUntil: 0
         };
 
         socket.emit('loginSuccess', players[socket.id]);
         socket.emit('configUpdated', gameConfig);
-        socket.emit('currentTomatoes', tomatoes);
-        socket.emit('currentLevers', levers);
-
         io.emit('currentPlayers', players);
     });
     
     socket.on('updateConfig', (newConfig) => {
         if (players[socket.id] && players[socket.id].isAdmin) {
-            if (newConfig.nbPlayers === 2 && Object.keys(players).length > 2) {
-                return; 
-            }
+            if (newConfig.nbPlayers === 2 && Object.keys(players).length > 2) return; 
             gameConfig = { ...gameConfig, ...newConfig };
             io.emit('configUpdated', gameConfig);
         }
@@ -118,16 +117,13 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('toggleLever', (leverId) => {
-        if (!players[socket.id] || levers[leverId] === undefined) return;
-        levers[leverId] = !levers[leverId]; 
-        io.emit('leverStateChanged', { leverId, state: levers[leverId] });
-    });
+    socket.on('toggleLever', (leverId) => { /* Gardé pour l'E */ });
 
     socket.on('playerInput', (data) => {
         let wasmId = playerWasmIds[socket.id];
         let player = players[socket.id];
-        if (wasmId === undefined || !player) return;
+        // ⚠️ Si le joueur est K.O., on bloque totalement ses inputs (Spectateur)
+        if (wasmId === undefined || !player || player.isDead) return;
 
         if (data.action === 'move') {
             world.set_player_vx(wasmId, data.vx); 
@@ -149,7 +145,7 @@ io.on('connection', (socket) => {
 
             if (Object.keys(players).length === 0) {
                 gameConfig.isStarted = false;
-                tomatoes = []; 
+                tomatoes = []; hearts = [];
             } else if (wasAdmin) {
                 players[Object.keys(players)[0]].isAdmin = true;
             }
@@ -170,85 +166,121 @@ setInterval(() => {
         const py = world.get_player_y(wasmId);
         
         player.isOverLadder = false;
-        for(const lad of serverLadders) {
-            if (px + 15 > lad.x && px - 15 < lad.x + lad.w && py > lad.y_top - 30 && py < lad.y_bottom) {   
-                player.isOverLadder = true;
-                break;
+        if (!player.isDead) { // ⚠️ Un fantôme ne grimpe pas aux échelles
+            for(const lad of serverLadders) {
+                if (px + 15 > lad.x && px - 15 < lad.x + lad.w && py > lad.y_top - 30 && py < lad.y_bottom) {   
+                    player.isOverLadder = true;
+                    break;
+                }
             }
-        }
-
-        if (player.isOverLadder && world.set_player_vy) {
-            world.set_player_vy(wasmId, player.vy_input);
+            if (player.isOverLadder && world.set_player_vy) {
+                world.set_player_vy(wasmId, player.vy_input);
+            }
         }
     }
 
     world.step(1 / 60);
 
+    // Descente des Objets
     if (tomatoes.length > 0) {
         for (let i = tomatoes.length - 1; i >= 0; i--) {
             tomatoes[i].y += tomatoes[i].speed;
-            if (tomatoes[i].y >= 850) {
-                io.emit('removeTomato', tomatoes[i].id);
-                tomatoes.splice(i, 1);
+            if (tomatoes[i].y >= 850) tomatoes.splice(i, 1);
+        }
+    }
+    if (hearts.length > 0) {
+        for (let i = hearts.length - 1; i >= 0; i--) {
+            hearts[i].y += hearts[i].speed;
+            if (hearts[i].y >= 850) hearts.splice(i, 1);
+        }
+    }
+
+    // 🌟 LOGIQUE DES COLLISIONS (DEGATS & SOIN) 🌟
+    for (let socketId in players) {
+        let player = players[socketId];
+        if (player.isDead) continue; // Les fantômes sont immunisés !
+        
+        let px = world.get_player_x(player.wasmId);
+        let py = world.get_player_y(player.wasmId);
+
+        // Touché par une tomate ?
+        for (let i = tomatoes.length - 1; i >= 0; i--) {
+            let t = tomatoes[i];
+            if (px < t.x + 20 && px + 30 > t.x && py < t.y + 20 && py + 30 > t.y) {
+                if (Date.now() > player.invulnerableUntil) {
+                    player.lives--;
+                    player.invulnerableUntil = Date.now() + 1000; // 1s d'invincibilité
+                    if (player.lives <= 0) {
+                        player.isDead = true;
+                        world.set_player_vx(player.wasmId, 0); // Stoppe le mouvement
+                    }
+                }
+                tomatoes.splice(i, 1); 
+            }
+        }
+
+        // Ramasse un soin ?
+        for (let i = hearts.length - 1; i >= 0; i--) {
+            let h = hearts[i];
+            if (px < h.x + 20 && px + 30 > h.x && py < h.y + 20 && py + 30 > h.y) {
+                if (player.lives < 3) player.lives++; // Soin max 3
+                hearts.splice(i, 1);
             }
         }
     }
 
-    const stateToBroadcast = { players: {} };
+    const stateToBroadcast = { players: {}, tomatoes: tomatoes, hearts: hearts };
+
+    let ratsOnCheese = 0;
+    let firstRatPseudo = "";
+    let totalRats = Object.keys(players).length;
+    let aliveRats = 0; // ⚠️ Pour vérifier le Game Over global
 
     for (let socketId in players) {
         let wasmId = playerWasmIds[socketId];
         let player = players[socketId];
+        let px = world.get_player_x(wasmId);
+        let py = world.get_player_y(wasmId);
         
         let onGround = world.get_player_on_ground(wasmId);
         let isMovingAnimation = onGround && Math.abs(player.vx) > 0;
         let isClimbingAnimation = player.isOverLadder && (!onGround || Math.abs(player.vy_input) > 0);
 
+        if (!player.isDead) aliveRats++; // Compte les survivants
+
         stateToBroadcast.players[socketId] = {
-            id: socketId,
-            x: world.get_player_x(wasmId),
-            y: world.get_player_y(wasmId),
-            pseudo: player.pseudo, 
-            color: player.color,
-            direction: player.direction, 
-            isMoving: isMovingAnimation,
-            isClimbing: isClimbingAnimation,
-            on_ground: onGround
+            id: socketId, x: px, y: py,
+            pseudo: player.pseudo, color: player.color, direction: player.direction, 
+            isMoving: isMovingAnimation, isClimbing: isClimbingAnimation, on_ground: onGround,
+            // 🌟 Envoi des données vitales au navigateur
+            lives: player.lives,
+            isDead: player.isDead,
+            isInvulnerable: Date.now() < player.invulnerableUntil
         };
-    }
 
-    // 🌟 CORRECTION : CONDITIONS DE VICTOIRE (COOP vs ENNEMI) 🌟
-    let ratsOnCheese = 0;
-    let firstRatPseudo = "";
-    let totalRats = Object.keys(players).length;
-
-    for (let socketId in players) {
-        let wasmId = playerWasmIds[socketId];
-        let px = world.get_player_x(wasmId);
-        let py = world.get_player_y(wasmId);
-        
-        // On vérifie si ce rat est sur le fromage
-        if (px < 400 && px > 290 && py < 50) {
+        if (!player.isDead && px < 400 && px > 290 && py < 50) {
             ratsOnCheese++;
-            if (ratsOnCheese === 1) {
-                firstRatPseudo = players[socketId].pseudo; // On enregistre le premier arrivé !
-            }
+            if (ratsOnCheese === 1) firstRatPseudo = player.pseudo; 
         }
     }
 
-    // Si on a au moins 1 rat en jeu
+    // 🌟 CONDITIONS DE FIN DE PARTIE 🌟
     if (totalRats > 0) {
-        // MODE COOP (AMI) : TOUS les rats doivent être sur le fromage !
-        if (gameConfig.modeAmi && ratsOnCheese === totalRats) {
+        // Condition de DEFAITE (Tout le monde est K.O)
+        if (aliveRats === 0) {
+            io.emit('gameOver');
+            gameConfig.isStarted = false;
+            tomatoes = []; hearts = [];
+        }
+        // Conditions de VICTOIRE
+        else if (gameConfig.modeAmi && ratsOnCheese === aliveRats && aliveRats > 0) {
             io.emit('gameWon', "LA BRIGADE");
-            gameConfig.isStarted = false; // On fige le serveur
-            tomatoes = [];
-        } 
-        // MODE ENNEMI : Le PREMIER rat arrivé déclenche la fin pour tout le monde !
-        else if (!gameConfig.modeAmi && ratsOnCheese > 0) {
+            gameConfig.isStarted = false; 
+            tomatoes = []; hearts = [];
+        } else if (!gameConfig.modeAmi && ratsOnCheese > 0) {
             io.emit('gameWon', firstRatPseudo);
-            gameConfig.isStarted = false; // On fige le serveur
-            tomatoes = [];
+            gameConfig.isStarted = false; 
+            tomatoes = []; hearts = [];
         }
     }
 

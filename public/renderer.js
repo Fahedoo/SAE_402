@@ -204,7 +204,7 @@ export class GameRenderer {
         });
     }
 
-    draw(allPlayers = {}) {
+    draw(state = { players: {}, tomatoes: [], hearts: [] }) {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
         this.drawLadders();
@@ -250,7 +250,17 @@ export class GameRenderer {
             this.ctx.drawImage(currentChefImg, chefX, chefY, cw, ch);
         }
 
-        Object.values(allPlayers).forEach(p => {
+        // 🌟 DESSIN DES OBJETS (Tomates et Coeurs)
+        this.ctx.font = "24px Arial";
+        if (state.tomatoes) state.tomatoes.forEach(t => {
+            this.ctx.fillText("🍅", t.x, t.y);
+        });
+        if (state.hearts) state.hearts.forEach(h => {
+            this.ctx.fillText("💖", h.x, h.y);
+        });
+
+        // 🌟 DESSIN DES JOUEURS
+        Object.values(state.players).forEach(p => {
             if (!p.color) p.color = 'gray'; 
 
             if (!allSkinsIdle[p.color]) {
@@ -267,10 +277,7 @@ export class GameRenderer {
             }
 
             let skin = p.isMoving ? allSkinsRun[p.color] : allSkinsIdle[p.color];
-            
-            if (p.isClimbing) {
-                skin = allSkinsClimb[p.color];
-            }
+            if (p.isClimbing) skin = allSkinsClimb[p.color];
 
             if (skin && skin.complete && skin.naturalWidth > 0) {
                 const ow = skin.naturalWidth; 
@@ -279,15 +286,12 @@ export class GameRenderer {
                 let renderX = p.x;
                 let renderY = p.y; 
 
-                if (p.on_ground) {
+                // Magnétisme visuel sur les pentes uniquement si on est vivant et au sol
+                if (p.on_ground && !p.isDead) {
                     this.platforms.forEach((plat, index) => {
                         const footX = renderX + (ow / 2); 
-                        
                         if (footX >= plat.x && footX <= plat.x + plat.w) {
                             const groundY = this.getPlatformY(index, footX);
-                            
-                            // 🌟 LE FIX DU "SAUT DE TÊTE" EST ICI ! 
-                            // Tolérance abaissée à 15. Si tu es à 30px plus haut (sur un allié), tu n'es plus aspiré par le sol.
                             if (Math.abs(p.y - (groundY - oh)) < 15) {
                                 renderY = groundY - oh; 
                             }
@@ -296,6 +300,14 @@ export class GameRenderer {
                 }
 
                 this.ctx.save();
+
+                // ⚠️ APPARENCE DES MORTS & DEGATS
+                if (p.isDead) {
+                    this.ctx.globalAlpha = 0.4; // Mode Fantôme
+                } else if (p.isInvulnerable && Math.floor(Date.now() / 100) % 2 === 0) {
+                    this.ctx.globalAlpha = 0.5; // Clignotement de dégât
+                }
+
                 if (p.direction === 1 && !p.isClimbing) { 
                     this.ctx.translate(renderX + ow / 2, renderY + oh / 2);
                     this.ctx.scale(-1, 1);
@@ -303,9 +315,11 @@ export class GameRenderer {
                 } else {
                     this.ctx.drawImage(skin, renderX, renderY, ow, oh);
                 }
-                this.ctx.restore();
+                
+                this.ctx.restore(); // Remet l'alpha normal
 
-                this.ctx.fillStyle = "white";
+                // Couleur du texte au-dessus de la tête
+                this.ctx.fillStyle = p.isDead ? "gray" : "white";
                 this.ctx.font = "bold 14px Arial";
                 this.ctx.textAlign = "center";
                 this.ctx.fillText(p.pseudo || "Rat", renderX + ow/2, renderY - 10);
@@ -321,32 +335,17 @@ export class GameRenderer {
     setupTestControls() {
         window.addEventListener('keydown', (e) => {
             const key = e.key.toLowerCase();
-            
-            if (key === 'd' || key === 'arrowright') { 
-                this.socket.emit('playerInput', { action: 'move', vx: 200 }); 
-            }
-            if (key === 'q' || key === 'a' || key === 'arrowleft') { 
-                this.socket.emit('playerInput', { action: 'move', vx: -200 }); 
-            }
-            if (key === 'z' || key === 'w' || key === 'arrowup') { 
-                this.socket.emit('playerInput', { action: 'move_v', vy: -200 }); 
-            }
-            if (key === 's' || key === 'arrowdown') { 
-                this.socket.emit('playerInput', { action: 'move_v', vy: 200 }); 
-            }
-            if (key === ' ' || key === 'spacebar') { 
-                this.socket.emit('playerInput', { action: 'jump' });
-            }
+            if (key === 'd' || key === 'arrowright') this.socket.emit('playerInput', { action: 'move', vx: 200 }); 
+            if (key === 'q' || key === 'a' || key === 'arrowleft') this.socket.emit('playerInput', { action: 'move', vx: -200 }); 
+            if (key === 'z' || key === 'w' || key === 'arrowup') this.socket.emit('playerInput', { action: 'move_v', vy: -200 }); 
+            if (key === 's' || key === 'arrowdown') this.socket.emit('playerInput', { action: 'move_v', vy: 200 }); 
+            if (key === ' ' || key === 'spacebar') this.socket.emit('playerInput', { action: 'jump' });
         });
 
         window.addEventListener('keyup', (e) => {
             const key = e.key.toLowerCase();
-            if (['d', 'q', 'a', 'arrowright', 'arrowleft'].includes(key)) {
-                this.socket.emit('playerInput', { action: 'move', vx: 0 }); 
-            }
-            if (['z', 'w', 's', 'arrowup', 'arrowdown'].includes(key)) {
-                this.socket.emit('playerInput', { action: 'move_v', vy: 0 }); 
-            }
+            if (['d', 'q', 'a', 'arrowright', 'arrowleft'].includes(key)) this.socket.emit('playerInput', { action: 'move', vx: 0 }); 
+            if (['z', 'w', 's', 'arrowup', 'arrowdown'].includes(key)) this.socket.emit('playerInput', { action: 'move_v', vy: 0 }); 
         });
     }
 }

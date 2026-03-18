@@ -10,7 +10,7 @@ let modeAmi = true;
 let isPaused = false;
 let isAdmin = false; 
 
-let allPlayers = {}; 
+let currentState = { players: {}, tomatoes: [], hearts: [] }; 
 
 const opt2 = document.getElementById('opt-2-players');
 const opt4 = document.getElementById('opt-4-players');
@@ -109,13 +109,23 @@ socket.on('gameStarted', (config) => {
     initGameEngine();
 });
 
+// 🌟 GESTION DE L'ÉTAT ET DU HUD
 socket.on('worldState', (state) => {
-    allPlayers = state.players; 
+    currentState = state; 
+    
+    // Mise à jour du compteur de vie en haut
+    if (state.players[socket.id]) {
+        const myPlayer = state.players[socket.id];
+        const livesEl = document.getElementById('lives-display');
+        if (livesEl) {
+            if (myPlayer.isDead) livesEl.innerText = "👻 SPECTATEUR";
+            else livesEl.innerText = "❤️".repeat(myPlayer.lives);
+        }
+    }
 });
 
-socket.on('playerDisconnected', (id) => { delete allPlayers[id]; });
+socket.on('playerDisconnected', (id) => { delete currentState.players[id]; });
 
-// 🌟 NOUVEAU : RÉCEPTION DE LA VICTOIRE (AVEC L'ÉNERVEMENT DU CHEF)
 socket.on('gameWon', (heroName) => {
     isPaused = true; 
     clearInterval(window.gameTimer); 
@@ -123,15 +133,24 @@ socket.on('gameWon', (heroName) => {
     const resultTitle = document.getElementById('result-title');
     if (resultTitle) {
         if (modeAmi) {
-            // Mode COOP
             resultTitle.innerHTML = "<span class='text-glow-green'>HOLD-UP RÉUSSI !</span><br><span class='text-shake-red' style='font-size: 1.5rem; display: inline-block; margin-top: 20px;'>LE CHEF EST EN RAGE !</span>";
         } else {
-            // Mode CHACUN POUR SOI
             resultTitle.innerHTML = `<span class='text-glow-green'>VICTOIRE DE ${heroName.toUpperCase()} !</span><br><span class='text-shake-red' style='font-size: 1.5rem; display: inline-block; margin-top: 20px;'>IL A PIQUÉ LE FROMAGE !</span>`;
         }
     }
     
     endGame(true); 
+});
+
+// 🌟 DÉFAITE GLOBALE (Tous les rats sont morts)
+socket.on('gameOver', () => {
+    isPaused = true; 
+    clearInterval(window.gameTimer); 
+    const resultTitle = document.getElementById('result-title');
+    if (resultTitle) {
+        resultTitle.innerHTML = "<span class='text-shake-red'>TOUT LE MONDE EST K.O. !</span><br><span style='font-size: 1.5rem; color: #888; display: inline-block; margin-top: 20px; text-shadow: none; animation: none;'>LE CHEF A GAGNÉ...</span>";
+    }
+    endGame(false);
 });
 
 function initGameEngine() {
@@ -141,7 +160,7 @@ function initGameEngine() {
     if (!renderer) {
         renderer = new GameRenderer(canvas, selectedColor, socket); 
         function gameLoop() {
-            if (!isPaused) renderer.draw(allPlayers);
+            if (!isPaused) renderer.draw(currentState); // ⚠️ On passe TOUT l'état (avec tomates)
             requestAnimationFrame(gameLoop);
         }
         gameLoop();
@@ -161,6 +180,9 @@ function startTestTimer() {
             if(timerDisplay) timerDisplay.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
             if (timeLeft <= 0) {
                 clearInterval(window.gameTimer);
+                // Défaite par le temps
+                const resultTitle = document.getElementById('result-title');
+                if (resultTitle) resultTitle.innerHTML = "<span class='text-shake-red'>LE TEMPS EST ÉCOULÉ !</span><br><span style='font-size: 1.5rem; color: #888; display: inline-block; margin-top: 20px; text-shadow: none; animation: none;'>PAS DE FROMAGE CE SOIR...</span>";
                 endGame(false);
             }
         }
@@ -168,12 +190,6 @@ function startTestTimer() {
 }
 
 function endGame(isVictory) {
-    const resultTitle = document.getElementById('result-title');
-    
-    // Si défaite par le temps
-    if(resultTitle && !isVictory) {
-        resultTitle.innerHTML = "<span class='text-shake-red'>BRIGADE ÉCRASÉE !</span><br><span style='font-size: 1.5rem; color: #888; display: inline-block; margin-top: 20px; text-shadow: none; animation: none;'>PAS DE FROMAGE CE SOIR...</span>";
-    }
     showScreen('screen-result');
 }
 
