@@ -2,7 +2,7 @@ import { VFXManager } from './vfx.js';
 
 const allSkinsIdle = {};
 const allSkinsRun = {};
-const allSkinsClimb = {}; // ⚠️ NOUVEAU CACHE POUR L'ÉCHELLE
+const allSkinsClimb = {}; 
 
 export class GameRenderer {
     constructor(canvas, color = 'gray', socket) { 
@@ -261,17 +261,13 @@ export class GameRenderer {
                 allSkinsRun[p.color] = new Image();
                 allSkinsRun[p.color].src = `assets/rat_run_${p.color}.png`;
             }
-            // ⚠️ CHARGEMENT DU SPRITE D'ÉCHELLE
             if (!allSkinsClimb[p.color]) {
                 allSkinsClimb[p.color] = new Image();
-                // Assure-toi que les fichiers sur le serveur s'appellent bien "rat_echelle_gray.png" etc...
                 allSkinsClimb[p.color].src = `assets/rat_echelle_${p.color}.png`; 
             }
 
-            // ⚠️ DÉCISION DU SPRITE À AFFICHER
             let skin = p.isMoving ? allSkinsRun[p.color] : allSkinsIdle[p.color];
             
-            // Si le serveur dit que le joueur est sur l'échelle et grimpe (ou est suspendu), on écrase !
             if (p.isClimbing) {
                 skin = allSkinsClimb[p.color];
             }
@@ -290,7 +286,9 @@ export class GameRenderer {
                         if (footX >= plat.x && footX <= plat.x + plat.w) {
                             const groundY = this.getPlatformY(index, footX);
                             
-                            if (Math.abs(p.y - (groundY - oh)) < 60) {
+                            // 🌟 LE FIX DU "SAUT DE TÊTE" EST ICI ! 
+                            // Tolérance abaissée à 15. Si tu es à 30px plus haut (sur un allié), tu n'es plus aspiré par le sol.
+                            if (Math.abs(p.y - (groundY - oh)) < 15) {
                                 renderY = groundY - oh; 
                             }
                         }
@@ -298,7 +296,6 @@ export class GameRenderer {
                 }
 
                 this.ctx.save();
-                // Si on grimpe, pas besoin de miroir gauche/droite, le sprite d'échelle fait face au mur
                 if (p.direction === 1 && !p.isClimbing) { 
                     this.ctx.translate(renderX + ow / 2, renderY + oh / 2);
                     this.ctx.scale(-1, 1);
