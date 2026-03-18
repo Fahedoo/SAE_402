@@ -12,6 +12,10 @@ let isAdmin = false;
 
 let allPlayers = {}; 
 
+// 🌟 NOUVEAU : On stocke l'état du niveau ici en attendant que le jeu commence
+let currentLevers = [];
+let isCheeseActive = false;
+
 const opt2 = document.getElementById('opt-2-players');
 const opt4 = document.getElementById('opt-4-players');
 const optAmi = document.getElementById('opt-mode-ami');
@@ -86,7 +90,6 @@ socket.on('configUpdated', (config) => {
         if(extraSlotsContainer) extraSlotsContainer.style.display = 'none';
     } else {
         opt4.classList.add('active'); opt2.classList.remove('active');
-        // 🌟 CORRECTION : 'contents' au lieu de 'block' pour que ça rentre dans la grille 2x2 !
         if(extraSlotsContainer) extraSlotsContainer.style.display = 'contents';
     }
     if(modeAmi) {
@@ -110,9 +113,20 @@ socket.on('gameStarted', (config) => {
     initGameEngine();
 });
 
-// NOUVEAU : Réception de l'état global avec les inputs mémorisés (animation fluide)
 socket.on('worldState', (state) => {
     allPlayers = state.players; 
+});
+
+// 🌟 CORRECTION : On met à jour nos variables globales de sécurité
+socket.on('gameState', (data) => {
+    currentLevers = data.levers;
+    isCheeseActive = data.cheeseActive;
+    
+    // Si le renderer existe déjà (en plein jeu), on le met à jour direct
+    if (renderer) {
+        renderer.levers = currentLevers;
+        renderer.cheeseActive = isCheeseActive;
+    }
 });
 
 socket.on('playerDisconnected', (id) => { delete allPlayers[id]; });
@@ -122,8 +136,12 @@ function initGameEngine() {
     resizeCanvas();
 
     if (!renderer) {
-        // Envoi du socket au renderer pour les touches de grimpe
         renderer = new GameRenderer(canvas, selectedColor, socket); 
+        
+        // 🌟 CORRECTION : On donne au renderer l'état du jeu qu'on avait reçu dans le lobby
+        renderer.levers = currentLevers;
+        renderer.cheeseActive = isCheeseActive;
+
         function gameLoop() {
             if (!isPaused) renderer.draw(allPlayers);
             requestAnimationFrame(gameLoop);
@@ -181,7 +199,7 @@ function togglePause() {
 window.addEventListener('resize', resizeCanvas);
 document.addEventListener('keydown', (e) => {
     if (e.key === "Escape") togglePause();
-    if (e.key.toLowerCase() === "e") socket.emit('toggleLever'); 
+    // 🌟 J'AI RETIRÉ LA TOUCHE "E" ICI, CAR renderer.js S'EN OCCUPE DÉJÀ AVEC 'interact'
 });
 const btnResume = document.getElementById('btn-resume');
 if(btnResume) btnResume.addEventListener('click', togglePause);

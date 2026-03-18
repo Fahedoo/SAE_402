@@ -3,7 +3,8 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 
-const { World } = require('./pkg/physics');
+// Remplace le "./" par "../" pour remonter d'un dossier !
+const { World } = require('../physics/pkg/physics.js');
 
 const app = express();
 const server = http.createServer(app);
@@ -53,6 +54,50 @@ const serverLadders = [
     { x: 600, w: 30, y_top: getPlatY(9, 600), y_bottom: getPlatY(8, 600) }
 ];
 
+// Remplace l'ancienne boucle par celle-ci pour envoyer les 4 variables
+serverLadders.forEach(lad => {
+    world.add_ladder(lad.x, lad.w, lad.y_top, lad.y_bottom);
+});
+
+// ==========================================
+// --- GESTION DES LEVIERS (Générés par le serveur) ---
+// ==========================================
+let leversData = [];
+let cheeseActive = false;
+
+function spawnLevers() {
+    leversData = [];
+    cheeseActive = false;
+    
+    // Entre 2 et 4 leviers
+    const numLevers = Math.floor(Math.random() * 3) + 2; 
+    
+    // Index des plateformes valides (on exclut 0:Sol et 9:Fromage)
+    const validPlatforms = [1, 2, 3, 4, 5, 6, 7, 8];
+
+    // On mélange les plateformes pour ne pas toujours avoir les mêmes
+    validPlatforms.sort(() => 0.5 - Math.random());
+
+    for (let i = 0; i < numLevers; i++) {
+        const platIndex = validPlatforms[i];
+        const plat = platformsData[platIndex];
+        
+        // Choisir un X aléatoire sur cette plateforme (marge de 20px)
+        const randomX = plat.x + 20 + Math.random() * (plat.w - 40);
+        
+        leversData.push({ 
+            id: `lever_${i}`, 
+            x: randomX, 
+            y: plat.y, 
+            active: false 
+        });
+    }
+    console.log(`🧀 Génération de ${numLevers} leviers aléatoires !`);
+}
+
+// Génération initiale
+spawnLevers();
+
 const players = {};
 const playerWasmIds = {};
 const MAX_PLAYERS = 4;
@@ -60,7 +105,7 @@ const MAX_PLAYERS = 4;
 let gameConfig = { nbPlayers: 2, modeAmi: true, isStarted: false };
 let tomatoes = [];
 let nextTomatoId = 1;
-let levers = { lever1: false, lever2: false };
+
 
 setInterval(() => {
     if (!gameConfig.isStarted || Object.keys(players).length === 0) return;
@@ -107,7 +152,9 @@ io.on('connection', (socket) => {
         socket.emit('loginSuccess', players[socket.id]);
         socket.emit('configUpdated', gameConfig);
         socket.emit('currentTomatoes', tomatoes);
-        socket.emit('currentLevers', levers);
+        
+        // Envoi des leviers et du statut du fromage au nouveau connecté
+        socket.emit('gameState', { levers: leversData, cheeseActive });
 
         io.emit('currentPlayers', players);
     });
@@ -125,14 +172,46 @@ io.on('connection', (socket) => {
     socket.on('requestStart', () => {
         if (players[socket.id] && players[socket.id].isAdmin) {
             gameConfig.isStarted = true;
+            // Quand on lance la partie, on régénère de nouveaux leviers
+            spawnLevers(); 
             io.emit('gameStarted', gameConfig);
+            io.emit('gameState', { levers: leversData, cheeseActive });
         }
     });
 
-    socket.on('toggleLever', (leverId) => {
-        if (!players[socket.id] || levers[leverId] === undefined) return;
-        levers[leverId] = !levers[leverId]; 
-        io.emit('leverStateChanged', { leverId, state: levers[leverId] });
+    // ==========================================
+    // --- NOUVELLE INTERACTION LEVIER ---
+    // ==========================================
+    socket.on('interact', () => {
+        const p = players[socket.id];
+        let wasmId = playerWasmIds[socket.id];
+        if (!p || wasmId === undefined) return;
+
+        // On récupère la vraie position du rat
+        const px = world.get_player_x(wasmId);
+        const py = world.get_player_y(wasmId);
+
+        let stateChanged = false;
+
+        leversData.forEach(lev => {
+            // Hitbox d'interaction (le rat doit être à moins de 50px du levier)
+            if (Math.abs(px - lev.x) < 50 && Math.abs(py - lev.y) < 50) {
+                lev.active = !lev.active;
+                stateChanged = true;
+            }
+        });
+
+        if (stateChanged) {
+            // Vérifie si TOUS les leviers sont sur "true"
+            cheeseActive = leversData.every(l => l.active);
+            
+            // Broadcast l'état mis à jour à tout le monde
+            io.emit('gameState', { levers: leversData, cheeseActive });
+            
+            if (cheeseActive) {
+                console.log("🧀 TOUS LES LEVIERS SONT ACTIFS ! Le fromage est débloqué !");
+            }
+        }
     });
 
     socket.on('playerInput', (data) => {

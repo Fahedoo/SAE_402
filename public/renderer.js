@@ -27,6 +27,15 @@ export class GameRenderer {
         this.imgFromage = new Image();
         this.imgFromage.src = 'assets/fromage.png'; 
 
+        // --- AJOUT LEVIERS ---
+        this.imgLeverOff = new Image();
+        this.imgLeverOff.src = 'assets/lever_off.jpg'; 
+        this.imgLeverOn = new Image();
+        this.imgLeverOn.src = 'assets/lever_on.png'; 
+
+        this.levers = [];
+        this.cheeseActive = false;
+
         this.chefFrame = 0;             
         this.lastChefSwap = Date.now(); 
         
@@ -57,14 +66,11 @@ export class GameRenderer {
 
             // ==========================================
             // --- CORRECTION : HAUTEUR DU SOMMET ---
-            // On descend de 80 à 150 pour que le chef
-            // ait de la place pour sa tête !
             // ==========================================
             { x: 300, y: 150,  w: 400, h: 15, slope: 0 }  // Index 9: Objectif (Chef + Fromage)
         ];
 
         // --- UN RÉSEAU D'ÉCHELLES STRATÉGIQUE ---
-        // Le dessin s'adapte automatiquement à la nouvelle hauteur !
         this.ladders = [
             // Du Sol à l'Étage 1
             { x: 100, topIndex: 1, bottomIndex: 0, w: 30 },
@@ -250,27 +256,47 @@ export class GameRenderer {
         this.drawBrokenLadders(); 
         this.drawPlatforms();
 
-        // ==========================================
-        // --- LE FROMAGE (SUR L'INDEX 9) ---
-        // Le Y est dynamique, il suit la plateforme
-        // ==========================================
-        if (this.imgFromage.complete && this.imgFromage.naturalWidth > 0) {
+        // --- LE FROMAGE (Objectif) ---
+        if (this.imgFromage && this.imgFromage.complete && this.imgFromage.naturalWidth > 0) {
             const fw = 100; 
             const echelleFromage = fw / this.imgFromage.naturalWidth; 
             const fh = this.imgFromage.naturalHeight * echelleFromage;
             
             const platFromage = this.platforms[9]; 
-            const decalageX = 180; // Posé à gauche de la plateforme
-            const fromX = platFromage.x + decalageX; 
-            const decalageY = 21; 
-            const fromY = this.getPlatformY(9, fromX + fw / 2) - fh + decalageY;
+            const fromX = platFromage.x + 180; 
+            const fromY = this.getPlatformY(9, fromX + fw / 2) - fh + 21;
+            
+            this.ctx.save();
+            
+            if (!this.cheeseActive) {
+                this.ctx.filter = 'grayscale(100%) opacity(50%)';
+            }
             
             this.ctx.drawImage(this.imgFromage, fromX, fromY, fw, fh);
+            this.ctx.restore();
         }
 
+       // --- DESSIN DES LEVIERS ---
+        this.levers.forEach(lev => {
+            const img = lev.active ? this.imgLeverOn : this.imgLeverOff;
+            const lw = 100; 
+            const lh = 100; 
+
+            // Si l'image est bien chargée, on la dessine
+            if (img.complete && img.naturalWidth > 0) {
+                this.ctx.drawImage(img, lev.x - lw / 2, lev.y - lh, lw, lh);
+            } else {
+                // 🚨 FALLBACK DEBUG : Si l'image bug, on dessine un gros carré de couleur !
+                this.ctx.fillStyle = lev.active ? '#27ae60' : '#c0392b'; // Vert ou Rouge
+                this.ctx.fillRect(lev.x - lw / 2, lev.y - lh, lw, lh);
+                this.ctx.strokeStyle = 'white';
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeRect(lev.x - lw / 2, lev.y - lh, lw, lh);
+            }
+        });
+
         // ==========================================
-        // --- LE CHEF (SUR L'INDEX 9 AUSSI) ---
-        // Son Y suit la plateforme descendue
+        // --- LE CHEF ---
         // ==========================================
         if (Date.now() - this.lastChefSwap > 3000) {
             this.chefFrame = this.chefFrame + 1;
@@ -294,7 +320,7 @@ export class GameRenderer {
             const ch = currentChefImg.naturalHeight * echelle;
             
             const platSommet = this.platforms[9]; 
-            const chefX = platSommet.x + 100; // Décalé à droite pour être à côté du fromage
+            const chefX = platSommet.x + 100; 
             const chefY = this.getPlatformY(9, chefX + cw / 2) - ch + decalagePieds;
 
             this.ctx.drawImage(currentChefImg, chefX, chefY, cw, ch);
@@ -384,6 +410,9 @@ export class GameRenderer {
             }
             if (key === ' ' || key === 'spacebar') { 
                 this.socket.emit('playerInput', { action: 'jump' });
+            }
+            if (key === 'e') {
+                this.socket.emit('interact'); 
             }
         });
 

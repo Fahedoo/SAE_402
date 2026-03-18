@@ -1,1 +1,1 @@
-\\se4fs\users\12412238\Docs\BUT2\DEV\SAE402\physics\target\wasm32-unknown-unknown\release\physics.wasm: \\se4fs\users\12412238\Docs\BUT2\DEV\SAE402\physics\src\lib.rs
+C:\Users\12401926\SAE-402_Chef-s-Rage-7\physics\target\wasm32-unknown-unknown\release\physics.wasm: C:\Users\12401926\SAE-402_Chef-s-Rage-7\physics\src\lib.rs

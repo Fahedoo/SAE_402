@@ -19,6 +19,24 @@ impl Platform {
     }
 }
 
+// ─── Echelle (AVEC HAUTEUR) ──────────────────────────────────────────
+#[wasm_bindgen]
+#[derive(Clone)]
+pub struct Ladder {
+    pub x: f32,
+    pub width: f32,
+    pub y_top: f32,    // 🌟 NOUVEAU : Le haut de l'échelle
+    pub y_bottom: f32, // 🌟 NOUVEAU : Le bas de l'échelle
+}
+
+#[wasm_bindgen]
+impl Ladder {
+    #[wasm_bindgen(constructor)]
+    pub fn new(x: f32, width: f32, y_top: f32, y_bottom: f32) -> Ladder {
+        Ladder { x, width, y_top, y_bottom }
+    }
+}
+
 // ─── Joueur ────────────────────────────────────────────────
 #[wasm_bindgen]
 #[derive(Clone)]
@@ -51,22 +69,23 @@ impl Player {
 pub struct World {
     gravity: f32,
     floor_y: f32,
-    pub width: f32, // ⚠️ NOUVEAU : La largeur logique du monde !
+    pub width: f32, 
     players: Vec<Player>,
     platforms: Vec<Platform>,
+    ladders: Vec<Ladder>, 
 }
 
 #[wasm_bindgen]
 impl World {
-    // ⚠️ NOUVEAU : Le constructeur prend maintenant la largeur
     #[wasm_bindgen(constructor)]
     pub fn new(gravity: f32, floor_y: f32, width: f32) -> World {
         World {
             gravity,
             floor_y,
-            width, // ⚠️ NOUVEAU
+            width, 
             players: Vec::new(),
             platforms: Vec::new(),
+            ladders: Vec::new(), 
         }
     }
 
@@ -82,16 +101,19 @@ impl World {
         id
     }
 
+    // 🌟 Prise en compte de la hauteur depuis JS !
+    pub fn add_ladder(&mut self, x: f32, width: f32, y_top: f32, y_bottom: f32) -> usize {
+        let id = self.ladders.len();
+        self.ladders.push(Ladder::new(x, width, y_top, y_bottom));
+        id
+    }
+
     pub fn set_player_vx(&mut self, id: usize, vx: f32) {
-        if let Some(p) = self.players.get_mut(id) {
-            p.vx = vx;
-        }
+        if let Some(p) = self.players.get_mut(id) { p.vx = vx; }
     }
 
     pub fn set_player_vy(&mut self, id: usize, vy: f32) {
-        if let Some(p) = self.players.get_mut(id) {
-            p.vy = vy;
-        }
+        if let Some(p) = self.players.get_mut(id) { p.vy = vy; }
     }
 
     pub fn player_jump(&mut self, id: usize, jump_speed: f32) {
@@ -113,7 +135,6 @@ impl World {
     pub fn step(&mut self, dt: f32) {
         let n = self.players.len();
 
-        // 1) Gravité + déplacement
         for p in self.players.iter_mut() {
             p.vy += self.gravity * dt;
             p.x += p.vx * dt;
@@ -122,22 +143,11 @@ impl World {
             p.jump_boost_ready = false;
         }
 
-        // 🌟 NOUVEAU : Murs physiques (Gauche et Droite) 🌟
         for p in self.players.iter_mut() {
-            // Mur gauche (X = 0)
-            if p.x < 0.0 {
-                p.x = 0.0;
-                p.vx = 0.0; // On l'arrête net
-            }
-
-            // Mur droit (X = self.width)
-            if p.x + p.width > self.width {
-                p.x = self.width - p.width;
-                p.vx = 0.0; // On l'arrête net
-            }
+            if p.x < 0.0 { p.x = 0.0; p.vx = 0.0; }
+            if p.x + p.width > self.width { p.x = self.width - p.width; p.vx = 0.0; }
         }
 
-        // 2) Collision avec le sol
         for p in self.players.iter_mut() {
             if p.y + p.height > self.floor_y {
                 p.y = self.floor_y - p.height;
@@ -146,14 +156,12 @@ impl World {
             }
         }
 
-        // 3) Collision avec les plateformes (Solides : on atterrit ET on se cogne la tête)
+        // 3) Collision ultra-précise (avec exception échelle au millimètre)
         for p in self.players.iter_mut() {
             for plat in &self.platforms {
-                // On vérifie si la largeur du joueur croise la largeur de la plateforme
-                let overlap_x = (p.x + p.width > plat.x) && (p.x < plat.x + plat.width);
+                let overlap_x = p.x + p.width > plat.x && p.x < plat.x + plat.width;
 
                 if overlap_x {
-                    // On calcule la position Y exacte du haut et du bas de la plateforme
                     let player_center = (p.x + p.width / 2.0).clamp(plat.x, plat.x + plat.width);
                     let ratio = (player_center - plat.x) / plat.width;
                     let exact_plat_top = plat.y + (plat.slope * ratio);
@@ -163,32 +171,51 @@ impl World {
                     let prev_bottom = prev_y + p.height;
                     let player_bottom = p.y + p.height;
 
-                    // CAS A : Atterrissage par le dessus (le rat tombe)
+                    // CAS A : Atterrissage propre
                     let lands = p.vy >= 0.0
-                        && prev_bottom <= exact_plat_top + 15.0 // Il était au-dessus
-                        && player_bottom >= exact_plat_top;     // Il traverse la ligne
+                        && prev_bottom <= exact_plat_top + 15.0
+                        && player_bottom >= exact_plat_top;
 
                     if lands {
                         p.y = exact_plat_top - p.height;
                         p.vy = 0.0;
                         p.on_ground = true;
                     } 
-                    // CAS B : Se cogner la tête par le dessous (le rat saute)
                     else {
+                        // CAS B : Collision avec le plafond
                         let bumps_head = p.vy < 0.0
-                            && prev_y >= exact_plat_bottom - 15.0 // Il était en dessous
-                            && p.y <= exact_plat_bottom;          // Sa tête touche le plafond
+                            && prev_y >= exact_plat_bottom - 20.0 
+                            && p.y <= exact_plat_bottom;
 
                         if bumps_head {
-                            p.y = exact_plat_bottom; // On le repousse juste en dessous du métal
-                            p.vy = 0.0; // 💥 On stoppe son élan vertical net !
+                            let mut on_ladder = false;
+                            let p_center_x = p.x + p.width / 2.0;
+
+                            for lad in &self.ladders {
+                                // 🌟 VERIFIE X ET Y ! 
+                                if p_center_x >= lad.x - 10.0 && p_center_x <= lad.x + lad.width + 10.0 {
+                                    let min_y = lad.y_top.min(lad.y_bottom);
+                                    let max_y = lad.y_top.max(lad.y_bottom);
+                                    
+                                    // Vérifie si on est bien au niveau de la VRAIE échelle
+                                    if exact_plat_top >= min_y - 10.0 && exact_plat_top <= max_y + 10.0 {
+                                        on_ladder = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            // BONG !
+                            if !on_ladder {
+                                p.y = exact_plat_bottom;
+                                p.vy = 0.0;
+                            }
                         }
                     }
                 }
             }
         }
 
-        // 4) Collision joueur contre joueur
         for a in 0..n {
             for b in (a + 1)..n {
                 let (left, right) = self.players.split_at_mut(a + 1);
@@ -231,7 +258,6 @@ impl World {
             }
         }
 
-        // 5) Re-clamp final au sol
         for p in self.players.iter_mut() {
             if p.y + p.height > self.floor_y {
                 p.y = self.floor_y - p.height;
