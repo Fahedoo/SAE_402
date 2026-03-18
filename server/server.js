@@ -3,47 +3,48 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 
-// 1. IMPORT DU WASM DE FAHED
 const { World } = require('./pkg/physics');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// --- CONFIGURATION DES DOSSIERS ---
 app.use(express.static(path.join(__dirname, '../Public')));
 
-// 2. INITIALISATION DE L'UNIVERS PHYSIQUE WASM
-// ⚠️ CORRECTION MAJEURE : Le sol du Wasm est abaissé à 850 (le canvas fait 900 de haut)
 const world = new World(1980.0, 850.0); 
 
-// --- AJOUT DES PLATEFORMES (Alignées sur le Canvas de Selma) ---
 const LEVEL_WIDTH = 900; 
-function addWasmSlope(start_x, start_y, width, thickness, slope) {
-    // On simule les pentes par des plateformes plates au milieu de la pente
-    const midY = start_y + (slope / 2);
-    world.add_platform(start_x, midY, width, thickness);
-}
-
-addWasmSlope(42, 800, LEVEL_WIDTH - 81, 18, -50); // Bas (0)
-addWasmSlope(42, 620, LEVEL_WIDTH - 254, 18, 45); // Étage 2 (1)
-addWasmSlope(109, 520, LEVEL_WIDTH - 149, 18, -50); // Étage 3 (2)
-addWasmSlope(42, 353, LEVEL_WIDTH - 145, 18, 50); // Étage 4 (3)
-addWasmSlope(42, 275, LEVEL_WIDTH - 83, 18, -65); // Étage 5 (4)
-addWasmSlope(63, 125, LEVEL_WIDTH - 228, 18, 30); // Sommet Chef (5)
-world.add_platform(300, 70, 170, 18); // Le fromage ! (6) - Plateforme plate
-
-// --- DÉFINITION DES ÉCHELLES DE SELMA ---
-const serverLadders = [
-    { x: 600, w: 30, y_top: 659, y_bottom: 768 }, 
-    { x: 150, w: 30, y_top: 507, y_bottom: 631 }, 
-    { x: 650, w: 30, y_top: 386, y_bottom: 483 }, 
-    { x: 100, w: 30, y_top: 285, y_bottom: 360 }, // Échelle 4
-    { x: 600, w: 30, y_top: 130, y_bottom: 226 }, // Échelle 5
-    { x: 420, w: 30, y_top: 70, y_bottom: 125 }   // Échelle Fromage
+// ⚠️ On envoie maintenant le "slope" direct au Wasm de Fahed !
+const platformsData = [
+    { x: 42,   y: 800, w: LEVEL_WIDTH-81, h: 18, slope: -50 }, // Bas (0)
+    { x: 42,   y: 620, w: LEVEL_WIDTH-254, h: 18, slope: 45  }, // Étage 2 (1)
+    { x: 109,  y: 520, w: LEVEL_WIDTH-149, h: 18, slope: -50 }, // Étage 3 (2)
+    { x: 42,   y: 353, w: LEVEL_WIDTH-145, h: 18, slope: 50  }, // Étage 4 (3)
+    { x: 42,   y: 275, w: LEVEL_WIDTH-83, h: 18, slope: -65  }, // Étage 5 (4)
+    { x: 63,   y: 125, w: LEVEL_WIDTH - 228, h: 18, slope: 30 }, // Sommet Chef (5)
+    { x: 300,  y: 70,  w: 170, h: 18, slope: 0 } // Le fromage ! (6)
 ];
 
-// --- ÉTAT DU SERVEUR ---
+// Initialisation des plateformes physiques
+platformsData.forEach(p => {
+    world.add_platform(p.x, p.y, p.w, p.h, p.slope);
+});
+
+// ⚠️ La Mathématique Ultime : Le serveur calcule la hauteur parfaite de l'échelle !
+function getPlatY(index, targetX) {
+    const p = platformsData[index];
+    return p.y + (p.slope * ((targetX - p.x) / p.w));
+}
+
+const serverLadders = [
+    { x: 600, w: 30, y_top: getPlatY(1, 600), y_bottom: getPlatY(0, 600) },
+    { x: 150, w: 30, y_top: getPlatY(2, 150), y_bottom: getPlatY(1, 150) },
+    { x: 650, w: 30, y_top: getPlatY(3, 650), y_bottom: getPlatY(2, 650) },
+    { x: 100, w: 30, y_top: getPlatY(4, 100), y_bottom: getPlatY(3, 100) },
+    { x: 600, w: 30, y_top: getPlatY(5, 600), y_bottom: getPlatY(4, 600) },
+    { x: 420, w: 30, y_top: getPlatY(6, 420), y_bottom: getPlatY(5, 420) } 
+];
+
 const players = {};
 const playerWasmIds = {};
 const MAX_PLAYERS = 4;
@@ -53,7 +54,6 @@ let tomatoes = [];
 let nextTomatoId = 1;
 let levers = { lever1: false, lever2: false };
 
-// --- GÉNÉRATION DES TOMATES ---
 setInterval(() => {
     if (!gameConfig.isStarted || Object.keys(players).length === 0) return;
     if (tomatoes.length >= 10) return; 
@@ -69,7 +69,6 @@ setInterval(() => {
     io.emit('newTomato', newTomato);
 }, 2000);
 
-// --- GESTION DES CONNEXIONS ---
 io.on('connection', (socket) => {
     console.log(`Nouveau rat connecté : ${socket.id}`);
 
@@ -81,8 +80,9 @@ io.on('connection', (socket) => {
 
         const isChef = Object.keys(players).length === 0;
         
-        // ⚠️ CORRECTION SPAWN : On fait spawner le joueur tout en bas (X: 100, Y: 750)
-        const wasmId = world.add_player(100, 750, 30, 30); 
+        // Spawn décalé en l'air
+        const spawnX = 80 + (Object.keys(players).length * 40);
+        const wasmId = world.add_player(spawnX, 500, 30, 30); 
         playerWasmIds[socket.id] = wasmId;
 
         players[socket.id] = {
@@ -126,7 +126,6 @@ io.on('connection', (socket) => {
         io.emit('leverStateChanged', { leverId, state: levers[leverId] });
     });
 
-    // --- GAMEPLAY : RÉCEPTION DES INPUTS ---
     socket.on('playerInput', (data) => {
         let wasmId = playerWasmIds[socket.id];
         let player = players[socket.id];
@@ -135,14 +134,10 @@ io.on('connection', (socket) => {
         if (data.action === 'move') {
             world.set_player_vx(wasmId, data.vx); 
             player.vx = data.vx; 
-            
-            // Mise à jour direction
             if (data.vx > 0) player.direction = 1;
             else if (data.vx < 0) player.direction = -1;
-
         } else if (data.action === 'move_v') {
-            player.vy_input = data.vy; // Grimpe
-
+            player.vy_input = data.vy; 
         } else if (data.action === 'jump') {
             world.player_jump(wasmId, 450); 
         }
@@ -167,11 +162,9 @@ io.on('connection', (socket) => {
     });
 });
 
-// --- LE CŒUR BATTANT DU JEU (Boucle 60 FPS) ---
 setInterval(() => {
     if (!gameConfig.isStarted) return;
 
-    // 1. Logique des échelles (Avant la physique)
     for (let socketId in players) {
         const player = players[socketId];
         const wasmId = player.wasmId;
@@ -180,23 +173,19 @@ setInterval(() => {
         
         player.isOverLadder = false;
         for(const lad of serverLadders) {
-            // Tolérance X pour attraper l'échelle (px + 15 / px - 15)
             if (px + 15 > lad.x && px - 15 < lad.x + lad.w && py > lad.y_top - 30 && py < lad.y_bottom) {   
                 player.isOverLadder = true;
                 break;
             }
         }
 
-        // GRIMPE ! Utilise la fonction de Fahed
         if (player.isOverLadder && world.set_player_vy) {
             world.set_player_vy(wasmId, player.vy_input);
         }
     }
 
-    // 2. Physique Wasm
     world.step(1 / 60);
 
-    // 3. Tomates (On détruit les tomates plus bas car le sol est à 850)
     if (tomatoes.length > 0) {
         for (let i = tomatoes.length - 1; i >= 0; i--) {
             tomatoes[i].y += tomatoes[i].speed;
@@ -207,7 +196,6 @@ setInterval(() => {
         }
     }
 
-    // 4. Préparation des données pour Selma
     const stateToBroadcast = { players: {} };
 
     for (let socketId in players) {
@@ -224,7 +212,7 @@ setInterval(() => {
             pseudo: player.pseudo, 
             color: player.color,
             direction: player.direction, 
-            isMoving: isMovingAnimation 
+            isMoving: isMovingAnimation
         };
     }
 

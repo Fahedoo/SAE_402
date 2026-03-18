@@ -1,7 +1,5 @@
-// renderer.js - Contrôle total, pseudo simple et échelles propres
 import { VFXManager } from './vfx.js';
 
-// Cache pour les animations des joueurs
 const allSkinsIdle = {};
 const allSkinsRun = {};
 
@@ -24,7 +22,6 @@ export class GameRenderer {
         this.imgChef1 = new Image();
         this.imgChef1.src = 'assets/chef_1.png'; 
 
-        // CHARGEMENT DU FROMAGE DE SELMA
         this.imgFromage = new Image();
         this.imgFromage.src = 'assets/fromage.png'; 
 
@@ -33,28 +30,25 @@ export class GameRenderer {
         
         this.vfx = new VFXManager();
 
-        // PLATEFORMES DE SELMA
         this.platforms = [
-            { x: 42,   y: 800, w: this.canvas.width-81, h: 18, slope: -50 }, // Bas (0)
-            { x: 42,   y: 620, w: this.canvas.width-254, h: 18, slope: 45  }, // Étage 2 (1)
-            { x: 109,  y: 520, w: this.canvas.width-149, h: 18, slope: -50 }, // Étage 3 (2)
-            { x: 42,   y: 353, w: this.canvas.width-145, h: 18, slope: 50  }, // Étage 4 (3)
-            { x: 42,   y: 275, w: this.canvas.width-83, h: 18, slope: -65  }, // Étage 5 (4)
-            { x: 63,   y: 125, w: this.canvas.width - 228, h: 18, slope: 30 }, // Sommet Chef (5)
-            { x: 300,  y: 70,  w: 170, h: 18, slope: 0 } // Le fromage ! (6)
+            { x: 42,   y: 800, w: this.canvas.width-81, h: 18, slope: -50 }, 
+            { x: 42,   y: 620, w: this.canvas.width-254, h: 18, slope: 45  }, 
+            { x: 109,  y: 520, w: this.canvas.width-149, h: 18, slope: -50 }, 
+            { x: 42,   y: 353, w: this.canvas.width-145, h: 18, slope: 50  }, 
+            { x: 42,   y: 275, w: this.canvas.width-83, h: 18, slope: -65  }, 
+            { x: 63,   y: 125, w: this.canvas.width - 228, h: 18, slope: 30 }, 
+            { x: 300,  y: 70,  w: 170, h: 18, slope: 0 } 
         ];
 
-        // ÉCHELLES DE SELMA
         this.ladders = [
             { x: 600, topIndex: 1, bottomIndex: 0, w: 30 }, 
             { x: 150, topIndex: 2, bottomIndex: 1, w: 30 }, 
             { x: 650, topIndex: 3, bottomIndex: 2, w: 30 }, 
             { x: 100, topIndex: 4, bottomIndex: 3, w: 30 }, 
             { x: 600, topIndex: 5, bottomIndex: 4, w: 30 }, 
-            { x: 420, topIndex: 6, bottomIndex: 5, w: 30 }  // Échelle Fromage
+            { x: 420, topIndex: 6, bottomIndex: 5, w: 30 }  
         ];
 
-        // ÉCHELLES CASSÉES DE SELMA
         this.brokenLadders = [
             { x: 350, topIndex: 2, bottomIndex: 1, w: 30 }, 
             { x: 450, topIndex: 4, bottomIndex: 3, w: 30 }  
@@ -216,7 +210,6 @@ export class GameRenderer {
         this.drawBrokenLadders(); 
         this.drawPlatforms();
 
-        // FROMAGE DE SELMA
         if (this.imgFromage.complete && this.imgFromage.naturalWidth > 0) {
             const fw = 100; 
             const echelleFromage = fw / this.imgFromage.naturalWidth; 
@@ -229,7 +222,6 @@ export class GameRenderer {
             this.ctx.drawImage(this.imgFromage, fromX, fromY, fw, fh);
         }
 
-        // ANIMATION CHEF
         if (Date.now() - this.lastChefSwap > 3000) {
             this.chefFrame = this.chefFrame + 1;
             if (this.chefFrame >= 3) {
@@ -257,9 +249,6 @@ export class GameRenderer {
             this.ctx.drawImage(currentChefImg, chefX, chefY, cw, ch);
         }
 
-        // ==========================================
-        // --- DESSIN DES JOUEURS (Dicté par le serveur) ---
-        // ==========================================
         Object.values(allPlayers).forEach(p => {
             if (!p.color) p.color = 'gray'; 
 
@@ -278,11 +267,8 @@ export class GameRenderer {
                 const ow = skin.naturalWidth; 
                 const oh = skin.naturalHeight;
                 
+                // ⚠️ On trace le rat EXACTEMENT où le moteur Wasm le dit ! (Plus d'aimant !)
                 this.ctx.save();
-                
-                // ⚠️ CORRECTION DIRECTION DU RAT 
-                // Inversion quand le joueur va à droite (direction === 1)
-                // (Car l'image de base du rat regarde vers la gauche)
                 if (p.direction === 1) { 
                     this.ctx.translate(p.x + ow / 2, p.y + oh / 2);
                     this.ctx.scale(-1, 1);
@@ -305,7 +291,6 @@ export class GameRenderer {
 
     triggerExplosion(x, y, type) { this.vfx.createExplosion(x, y, type); }
 
-    // ⚠️ CONTRÔLES : ENVOI AU SERVEUR UNIQUEMENT
     setupTestControls() {
         window.addEventListener('keydown', (e) => {
             const key = e.key.toLowerCase();
