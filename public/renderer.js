@@ -1,3 +1,4 @@
+// renderer.js - Mode Coopératif (Plateformes aérées avec headroom final)
 import { VFXManager } from './vfx.js';
 
 const allSkinsIdle = {};
@@ -31,28 +32,66 @@ export class GameRenderer {
         
         this.vfx = new VFXManager();
 
+        // ==========================================
+        // --- NOUVEAU LEVEL DESIGN : AÉRÉ ET LONG ---
+        // Toutes les plateformes sont DROITES (slope: 0)
+        // ==========================================
         this.platforms = [
-            { x: 42,   y: 800, w: this.canvas.width-81, h: 18, slope: -50 }, 
-            { x: 42,   y: 620, w: this.canvas.width-254, h: 18, slope: 45  }, 
-            { x: 109,  y: 520, w: this.canvas.width-149, h: 18, slope: -50 }, 
-            { x: 42,   y: 353, w: this.canvas.width-145, h: 18, slope: 50  }, 
-            { x: 42,   y: 275, w: this.canvas.width-83, h: 18, slope: -65  }, 
-            { x: 63,   y: 125, w: this.canvas.width - 228, h: 18, slope: 30 }, 
-            { x: 300,  y: 70,  w: 170, h: 18, slope: 0 } 
+            { x: 0,   y: 800, w: this.canvas.width, h: 20, slope: 0 }, // Index 0: Sol complet
+
+            // Étage 1 (y: 650)
+            { x: 50,  y: 650, w: 300, h: 15, slope: 0 }, // Index 1: Gauche
+            { x: 550, y: 650, w: 300, h: 15, slope: 0 }, // Index 2: Droite
+
+            // Étage 2 (y: 500)
+            { x: 200, y: 500, w: 400, h: 15, slope: 0 }, // Index 3: Grand pont central
+            { x: 650, y: 500, w: 250, h: 15, slope: 0 }, // Index 4: Droite
+
+            // Étage 3 (y: 350)
+            { x: 50,  y: 350, w: 250, h: 15, slope: 0 }, // Index 5: Gauche
+            { x: 350, y: 350, w: 450, h: 15, slope: 0 }, // Index 6: Très grand pont droit
+
+            // Étage 4 (y: 200)
+            { x: 150, y: 200, w: 350, h: 15, slope: 0 }, // Index 7: Centre Gauche
+            { x: 550, y: 200, w: 300, h: 15, slope: 0 }, // Index 8: Centre Droite
+
+            // ==========================================
+            // --- CORRECTION : HAUTEUR DU SOMMET ---
+            // On descend de 80 à 150 pour que le chef
+            // ait de la place pour sa tête !
+            // ==========================================
+            { x: 300, y: 150,  w: 400, h: 15, slope: 0 }  // Index 9: Objectif (Chef + Fromage)
         ];
 
+        // --- UN RÉSEAU D'ÉCHELLES STRATÉGIQUE ---
+        // Le dessin s'adapte automatiquement à la nouvelle hauteur !
         this.ladders = [
-            { x: 600, topIndex: 1, bottomIndex: 0, w: 30 }, 
-            { x: 150, topIndex: 2, bottomIndex: 1, w: 30 }, 
-            { x: 650, topIndex: 3, bottomIndex: 2, w: 30 }, 
-            { x: 100, topIndex: 4, bottomIndex: 3, w: 30 }, 
-            { x: 600, topIndex: 5, bottomIndex: 4, w: 30 }, 
-            { x: 420, topIndex: 6, bottomIndex: 5, w: 30 }  
+            // Du Sol à l'Étage 1
+            { x: 100, topIndex: 1, bottomIndex: 0, w: 30 },
+            { x: 710, topIndex: 2, bottomIndex: 0, w: 30 },
+
+            // De l'Étage 1 à l'Étage 2
+            { x: 250, topIndex: 3, bottomIndex: 1, w: 30 },
+            { x: 560, topIndex: 3, bottomIndex: 2, w: 30 },
+            { x: 740, topIndex: 4, bottomIndex: 2, w: 30 },
+
+            // De l'Étage 2 à l'Étage 3
+            { x: 210, topIndex: 5, bottomIndex: 3, w: 30 },
+            { x: 450, topIndex: 6, bottomIndex: 3, w: 30 },
+            { x: 680, topIndex: 6, bottomIndex: 4, w: 30 },
+
+            // De l'Étage 3 à l'Étage 4
+            { x: 180, topIndex: 7, bottomIndex: 5, w: 30 },
+            { x: 650, topIndex: 8, bottomIndex: 6, w: 30 },
+
+            // De l'Étage 4 au Sommet (Fromage)
+            { x: 350, topIndex: 9, bottomIndex: 7, w: 30 },
+            { x: 600, topIndex: 9, bottomIndex: 8, w: 30 }
         ];
 
+        // Échelles cassées (pour se cacher derrière)
         this.brokenLadders = [
-            { x: 350, topIndex: 2, bottomIndex: 1, w: 30 }, 
-            { x: 450, topIndex: 4, bottomIndex: 3, w: 30 }  
+            { x: 350, topIndex: 3, bottomIndex: 0, w: 30 }, // Traverse le vide au milieu
         ];
 
         this.setupTestControls();
@@ -211,18 +250,28 @@ export class GameRenderer {
         this.drawBrokenLadders(); 
         this.drawPlatforms();
 
+        // ==========================================
+        // --- LE FROMAGE (SUR L'INDEX 9) ---
+        // Le Y est dynamique, il suit la plateforme
+        // ==========================================
         if (this.imgFromage.complete && this.imgFromage.naturalWidth > 0) {
             const fw = 100; 
             const echelleFromage = fw / this.imgFromage.naturalWidth; 
             const fh = this.imgFromage.naturalHeight * echelleFromage;
-            const platFromage = this.platforms[6];
-            const decalageX = 10;
+            
+            const platFromage = this.platforms[9]; 
+            const decalageX = 180; // Posé à gauche de la plateforme
             const fromX = platFromage.x + decalageX; 
             const decalageY = 21; 
-            const fromY = this.getPlatformY(6, fromX + fw / 2) - fh + decalageY;
+            const fromY = this.getPlatformY(9, fromX + fw / 2) - fh + decalageY;
+            
             this.ctx.drawImage(this.imgFromage, fromX, fromY, fw, fh);
         }
 
+        // ==========================================
+        // --- LE CHEF (SUR L'INDEX 9 AUSSI) ---
+        // Son Y suit la plateforme descendue
+        // ==========================================
         if (Date.now() - this.lastChefSwap > 3000) {
             this.chefFrame = this.chefFrame + 1;
             if (this.chefFrame >= 3) {
@@ -243,9 +292,10 @@ export class GameRenderer {
 
             const cw = currentChefImg.naturalWidth * echelle;
             const ch = currentChefImg.naturalHeight * echelle;
-            const platSommet = this.platforms[5];
-            const chefX = platSommet.x + 120; 
-            const chefY = this.getPlatformY(5, chefX + cw / 2) - ch + decalagePieds;
+            
+            const platSommet = this.platforms[9]; 
+            const chefX = platSommet.x + 100; // Décalé à droite pour être à côté du fromage
+            const chefY = this.getPlatformY(9, chefX + cw / 2) - ch + decalagePieds;
 
             this.ctx.drawImage(currentChefImg, chefX, chefY, cw, ch);
         }
@@ -286,8 +336,6 @@ export class GameRenderer {
                         if (footX >= plat.x && footX <= plat.x + plat.w) {
                             const groundY = this.getPlatformY(index, footX);
                             
-                            // 🌟 LE FIX DU "SAUT DE TÊTE" EST ICI ! 
-                            // Tolérance abaissée à 15. Si tu es à 30px plus haut (sur un allié), tu n'es plus aspiré par le sol.
                             if (Math.abs(p.y - (groundY - oh)) < 15) {
                                 renderY = groundY - oh; 
                             }

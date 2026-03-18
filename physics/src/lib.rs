@@ -146,27 +146,43 @@ impl World {
             }
         }
 
-        // 3) Collision avec les plateformes (Pentes intelligentes Wasm)
+        // 3) Collision avec les plateformes (Solides : on atterrit ET on se cogne la tête)
         for p in self.players.iter_mut() {
             for plat in &self.platforms {
-                let player_center = p.x + (p.width / 2.0);
+                // On vérifie si la largeur du joueur croise la largeur de la plateforme
+                let overlap_x = (p.x + p.width > plat.x) && (p.x < plat.x + plat.width);
 
-                if player_center >= plat.x && player_center <= plat.x + plat.width {
+                if overlap_x {
+                    // On calcule la position Y exacte du haut et du bas de la plateforme
+                    let player_center = (p.x + p.width / 2.0).clamp(plat.x, plat.x + plat.width);
                     let ratio = (player_center - plat.x) / plat.width;
-                    let exact_plat_y = plat.y + (plat.slope * ratio);
+                    let exact_plat_top = plat.y + (plat.slope * ratio);
+                    let exact_plat_bottom = exact_plat_top + plat.height;
 
                     let prev_y = p.y - p.vy * dt;
                     let prev_bottom = prev_y + p.height;
                     let player_bottom = p.y + p.height;
 
+                    // CAS A : Atterrissage par le dessus (le rat tombe)
                     let lands = p.vy >= 0.0
-                        && prev_bottom <= exact_plat_y + 15.0 // Marge de tolérance
-                        && player_bottom >= exact_plat_y;
+                        && prev_bottom <= exact_plat_top + 15.0 // Il était au-dessus
+                        && player_bottom >= exact_plat_top;     // Il traverse la ligne
 
                     if lands {
-                        p.y = exact_plat_y - p.height;
+                        p.y = exact_plat_top - p.height;
                         p.vy = 0.0;
                         p.on_ground = true;
+                    } 
+                    // CAS B : Se cogner la tête par le dessous (le rat saute)
+                    else {
+                        let bumps_head = p.vy < 0.0
+                            && prev_y >= exact_plat_bottom - 15.0 // Il était en dessous
+                            && p.y <= exact_plat_bottom;          // Sa tête touche le plafond
+
+                        if bumps_head {
+                            p.y = exact_plat_bottom; // On le repousse juste en dessous du métal
+                            p.vy = 0.0; // 💥 On stoppe son élan vertical net !
+                        }
                     }
                 }
             }

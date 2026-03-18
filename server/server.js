@@ -11,17 +11,21 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, '../Public')));
 
-const LEVEL_WIDTH = 900; 
+const LEVEL_WIDTH = 1000; 
 const world = new World(1980.0, 850.0, LEVEL_WIDTH); 
 
+// Tes plateformes (parfaitement identiques)
 const platformsData = [
-    { x: 42,   y: 800, w: LEVEL_WIDTH-81, h: 18, slope: -50 }, 
-    { x: 42,   y: 620, w: LEVEL_WIDTH-254, h: 18, slope: 45  }, 
-    { x: 109,  y: 520, w: LEVEL_WIDTH-149, h: 18, slope: -50 }, 
-    { x: 42,   y: 353, w: LEVEL_WIDTH-145, h: 18, slope: 50  }, 
-    { x: 42,   y: 275, w: LEVEL_WIDTH-83, h: 18, slope: -65  }, 
-    { x: 63,   y: 125, w: LEVEL_WIDTH - 228, h: 18, slope: 30 }, 
-    { x: 300,  y: 70,  w: 170, h: 18, slope: 0 } 
+    { x: 0,   y: 800, w: LEVEL_WIDTH, h: 20, slope: 0 }, // 0
+    { x: 50,  y: 650, w: 300, h: 15, slope: 0 }, // 1
+    { x: 550, y: 650, w: 300, h: 15, slope: 0 }, // 2
+    { x: 200, y: 500, w: 400, h: 15, slope: 0 }, // 3
+    { x: 650, y: 500, w: 250, h: 15, slope: 0 }, // 4
+    { x: 50,  y: 350, w: 250, h: 15, slope: 0 }, // 5
+    { x: 350, y: 350, w: 450, h: 15, slope: 0 }, // 6
+    { x: 150, y: 200, w: 350, h: 15, slope: 0 }, // 7
+    { x: 550, y: 200, w: 300, h: 15, slope: 0 }, // 8
+    { x: 300, y: 150, w: 400, h: 15, slope: 0 }  // 9 (Chef + Fromage)
 ];
 
 platformsData.forEach(p => {
@@ -33,13 +37,20 @@ function getPlatY(index, targetX) {
     return p.y + (p.slope * ((targetX - p.x) / p.w));
 }
 
+// Tes 12 échelles, avec tes nouvelles positions X exactes !
 const serverLadders = [
-    { x: 600, w: 30, y_top: getPlatY(1, 600), y_bottom: getPlatY(0, 600) },
-    { x: 150, w: 30, y_top: getPlatY(2, 150), y_bottom: getPlatY(1, 150) },
-    { x: 650, w: 30, y_top: getPlatY(3, 650), y_bottom: getPlatY(2, 650) },
-    { x: 100, w: 30, y_top: getPlatY(4, 100), y_bottom: getPlatY(3, 100) },
-    { x: 600, w: 30, y_top: getPlatY(5, 600), y_bottom: getPlatY(4, 600) },
-    { x: 420, w: 30, y_top: getPlatY(6, 420), y_bottom: getPlatY(5, 420) } 
+    { x: 100, w: 30, y_top: getPlatY(1, 100), y_bottom: getPlatY(0, 100) },
+    { x: 710, w: 30, y_top: getPlatY(2, 710), y_bottom: getPlatY(0, 710) },
+    { x: 250, w: 30, y_top: getPlatY(3, 250), y_bottom: getPlatY(1, 250) },
+    { x: 560, w: 30, y_top: getPlatY(3, 560), y_bottom: getPlatY(2, 560) },
+    { x: 740, w: 30, y_top: getPlatY(4, 740), y_bottom: getPlatY(2, 740) },
+    { x: 210, w: 30, y_top: getPlatY(5, 210), y_bottom: getPlatY(3, 210) },
+    { x: 450, w: 30, y_top: getPlatY(6, 450), y_bottom: getPlatY(3, 450) },
+    { x: 680, w: 30, y_top: getPlatY(6, 680), y_bottom: getPlatY(4, 680) },
+    { x: 180, w: 30, y_top: getPlatY(7, 180), y_bottom: getPlatY(5, 180) },
+    { x: 650, w: 30, y_top: getPlatY(8, 650), y_bottom: getPlatY(6, 650) },
+    { x: 350, w: 30, y_top: getPlatY(9, 350), y_bottom: getPlatY(7, 350) },
+    { x: 600, w: 30, y_top: getPlatY(9, 600), y_bottom: getPlatY(8, 600) }
 ];
 
 const players = {};
