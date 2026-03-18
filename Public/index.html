@@ -64,16 +64,15 @@
                 </div>
 
                 <div class="slots-container">
-                    <div class="slot active" id="slot-1">MOI</div>
+                    <div class="slot" id="slot-1">EN ATTENTE...</div>
                     <div class="slot" id="slot-2">EN ATTENTE...</div>
-                    <div class="slot extra-slot" id="slot-3" style="display:none;">EN ATTENTE...</div>
-                    <div class="slot extra-slot" id="slot-4" style="display:none;">EN ATTENTE...</div>
+                    <div id="extra-slots" style="display:none;">
+                        <div class="slot" id="slot-3">EN ATTENTE...</div>
+                        <div class="slot" id="slot-4">EN ATTENTE...</div>
+                    </div>
                 </div>
 
-                <div id="wait-message" style="display:none; margin-bottom: 15px;">
-                    <p class="label blink" style="color: #FFCC00;">EN ATTENTE DU CHEF...</p>
-                </div>
-
+                <div id="wait-message" style="display:none;">En attente du Chef de brigade...</div>
                 <button id="btn-start-service" class="btn-large">LANCER LE SERVICE !</button>
             </div>
         </section>
@@ -83,54 +82,22 @@
                 <div class="hud-group"><span>SCORE:</span><span id="score">000000</span></div>
                 <div class="hud-group"><span>TIME:</span><span id="timer">3:00</span></div>
             </div>
-            <div id="game-hints" class="medieval-style">
-                <div class="hint-row">
-                    <div class="key-stone">ZQSD</div>
-                    <span class="hint-text">SE DEPLACER</span>
-                </div>
-                <div class="hint-row">
-                    <div class="key-stone space">ESPACE</div>
-                    <span class="hint-text">SAUTER</span>
-                </div>
-                <div class="hint-row">
-                    <div class="key-stone interact">E</div>
-                    <span id="dynamic-e-text" class="hint-text">INTERAGIR</span>
-                </div>
-            </div>
-
             <canvas id="gameCanvas"></canvas>
         </section>
 
         <section id="screen-result" class="screen">
-            <div class="result-container">
-                <h2 id="result-title" class="retro-title">RÉSULTAT</h2>
-
-                <div class="menu-box result-box">
-                    <p class="label">SCORE DE LA BRIGADE :</p>
-                    <div id="final-score" class="score-display">000000</div>
-
-                    <p id="result-message" class="result-msg">CHARGEMENT...</p>
-
-                    <div class="selection-grid">
-                        <button id="btn-restart" class="btn-large">RETOUR AU VESTIAIRE</button>
-                        <button class="btn-small" onclick="location.reload()">MENU PRINCIPAL</button>
-                    </div>
-                </div>
+            <h2 class="retro-title" id="result-title">FIN DU SERVICE</h2>
+            <div class="menu-box">
+                <p class="label">SCORE FINAL :</p>
+                <h3 id="final-score" style="font-size: 2rem; color: #00FF41; text-align: center; margin-bottom: 20px;">0
+                </h3>
+                <button onclick="location.reload()">NOUVEAU SERVICE</button>
             </div>
         </section>
-
-        <div id="pause-overlay" style="display: none;">
-            <div class="menu-box" style="width: 400px; text-align: center;">
-                <h2 class="retro-title" style="font-size: 1.5rem;">PAUSE</h2>
-                <button id="btn-resume" style="margin-bottom: 20px;">REPRENDRE</button>
-                <button class="btn-small" onclick="location.reload()">QUITTER</button>
-            </div>
-        </div>
-
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="main.js"></script>
+    <script type="module" src="main.js"></script>
 </body>
 
 </html>

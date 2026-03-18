@@ -1,8 +1,25 @@
-// ==========================================
-// 1. INITIALISATION & ÉTAT
-// ==========================================
+import { GameRenderer } from './renderer.js';
+
 const socket = io();
 
+// ==========================================
+// 1. INITIALISATION & SONS
+// ==========================================
+const sfx = {
+    click: new Audio('assets/bouton_lobby.ogg'),
+    victory: new Audio('assets/victoire.wav'),
+    defeat: new Audio('assets/defaite.wav')
+};
+Object.values(sfx).forEach(s => s.volume = 0.4);
+
+function playSound(sound) {
+    if (sound) {
+        sound.currentTime = 0;
+        sound.play().catch(e => console.log("Audio bloqué :", e));
+    }
+}
+
+let renderer = null;
 let currentPseudo = "";
 let selectedColor = "gray";
 let nbPlayers = 2;
@@ -10,9 +27,17 @@ let modeAmi = true;
 let isPaused = false;
 let isAdmin = false;
 
+let allPlayers = {};
+
 // ==========================================
-// 2. NAVIGATION (SPA)
+// 2. ÉLÉMENTS DU DOM
 // ==========================================
+const opt2 = document.getElementById('opt-2-players');
+const opt4 = document.getElementById('opt-4-players');
+const optAmi = document.getElementById('opt-mode-ami');
+const optEnnemi = document.getElementById('opt-mode-ennemi');
+const extraSlotsContainer = document.getElementById('extra-slots');
+
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     const target = document.getElementById(screenId);
@@ -20,11 +45,12 @@ function showScreen(screenId) {
 }
 
 // ==========================================
-// 3. LOGIQUE CONNEXION (LOGIN)
+// 3. LOGIQUE LOBBY & CONNEXION
 // ==========================================
 
 document.querySelectorAll('.color-opt').forEach(opt => {
     opt.addEventListener('click', () => {
+        playSound(sfx.click); // 🔊 Son au clic couleur
         document.querySelectorAll('.color-opt').forEach(o => o.classList.remove('active'));
         opt.classList.add('active');
         selectedColor = opt.getAttribute('data-color');
@@ -32,9 +58,9 @@ document.querySelectorAll('.color-opt').forEach(opt => {
 });
 
 document.getElementById('btn-to-lobby').addEventListener('click', () => {
+    playSound(sfx.click); // 🔊 Son au bouton rejoindre
     const input = document.getElementById('pseudo');
     currentPseudo = input.value.trim();
-
     if (currentPseudo !== "") {
         socket.emit('login', { pseudo: currentPseudo, color: selectedColor });
     } else {
@@ -46,61 +72,34 @@ socket.on('loginSuccess', (playerData) => {
     showScreen('screen-lobby');
 });
 
-socket.on('loginFailed', (message) => {
-    alert(message);
-});
-
-// ==========================================
-// 4. LOGIQUE LOBBY (SYNCHRONISATION)
-// ==========================================
+socket.on('loginFailed', (message) => { alert(message); });
 
 function updatePlayersSlots(playersObj) {
     const playersList = Object.values(playersObj);
-
-    // Reset des slots
     for (let i = 1; i <= 4; i++) {
         const slot = document.getElementById(`slot-${i}`);
-        if (slot) {
-            slot.innerText = "EN ATTENTE...";
-            slot.classList.remove('active');
-        }
+        if (slot) { slot.innerText = "EN ATTENTE..."; slot.classList.remove('active'); }
     }
-
-    // Remplissage
     playersList.forEach((player, index) => {
         const slotNum = index + 1;
         const slotEl = document.getElementById(`slot-${slotNum}`);
         if (slotEl) {
             slotEl.innerText = player.pseudo.toUpperCase() + (player.id === socket.id ? " (MOI)" : "");
             slotEl.classList.add('active');
+            slotEl.style.color = player.color;
         }
     });
 
-    // Check si on devient Chef (si le J1 part)
-    if (playersList[0] && playersList[0].id === socket.id) {
-        isAdmin = true;
-        setChefMode();
-    } else {
-        isAdmin = false;
-        setGuestMode();
-    }
+    isAdmin = (playersList[0] && playersList[0].id === socket.id);
+    document.getElementById('btn-start-service').style.display = isAdmin ? 'block' : 'none';
+    document.getElementById('wait-message').style.display = isAdmin ? 'none' : 'block';
+    enableLobbyInteractions(isAdmin);
 }
 
-function setChefMode() {
-    document.getElementById('btn-start-service').style.display = 'block';
-    document.getElementById('wait-message').style.display = 'none';
-    document.querySelectorAll('.choice-card').forEach(card => {
-        card.style.pointerEvents = 'auto';
-        card.style.opacity = '1';
-    });
-}
-
-function setGuestMode() {
-    document.getElementById('btn-start-service').style.display = 'none';
-    document.getElementById('wait-message').style.display = 'block';
-    document.querySelectorAll('.choice-card').forEach(card => {
-        card.style.pointerEvents = 'none';
-        card.style.opacity = '0.5';
+function enableLobbyInteractions(enabled) {
+    document.querySelectorAll('.choice-card, .admin-btn').forEach(el => {
+        el.style.pointerEvents = enabled ? 'auto' : 'none';
+        el.style.opacity = enabled ? '1' : '0.5';
     });
 }
 
@@ -109,144 +108,183 @@ socket.on('currentPlayers', (players) => updatePlayersSlots(players));
 socket.on('configUpdated', (config) => {
     nbPlayers = config.nbPlayers;
     modeAmi = config.modeAmi;
-
-    // Sync visuelle Taille
     if (nbPlayers === 2) {
-        opt2.classList.add('active');
-        opt4.classList.remove('active');
-        extraSlots.forEach(s => s.style.display = 'none');
+        opt2.classList.add('active'); opt4.classList.remove('active');
+        if (extraSlotsContainer) extraSlotsContainer.style.display = 'none';
     } else {
-        opt4.classList.add('active');
-        opt2.classList.remove('active');
-        extraSlots.forEach(s => s.style.display = 'block');
+        opt4.classList.add('active'); opt2.classList.remove('active');
+        if (extraSlotsContainer) extraSlotsContainer.style.display = 'contents';
     }
-
-    // Sync visuelle Mode
     if (modeAmi) {
-        optAmi.classList.add('active');
-        optEnnemi.classList.remove('active');
+        optAmi.classList.add('active'); optEnnemi.classList.remove('active');
     } else {
-        optEnnemi.classList.add('active');
-        optAmi.classList.remove('active');
+        optEnnemi.classList.add('active'); optAmi.classList.remove('active');
     }
 });
 
-// Événements boutons Lobby
-const opt2 = document.getElementById('opt-2-players');
-const opt4 = document.getElementById('opt-4-players');
-const extraSlots = document.querySelectorAll('.extra-slot');
-const optAmi = document.getElementById('opt-mode-ami');
-const optEnnemi = document.getElementById('opt-mode-ennemi');
-
-opt2.addEventListener('click', () => isAdmin && socket.emit('updateConfig', { nbPlayers: 2 }));
-opt4.addEventListener('click', () => isAdmin && socket.emit('updateConfig', { nbPlayers: 4 }));
-optAmi.addEventListener('click', () => isAdmin && socket.emit('updateConfig', { modeAmi: true }));
-optEnnemi.addEventListener('click', () => isAdmin && socket.emit('updateConfig', { modeAmi: false }));
-
-
-// ==========================================
-// 5. LOGIQUE JEU (HUD & SCORE)
-// ==========================================
+// Ajout des sons aux clics de configuration
+opt2.addEventListener('click', () => { if (isAdmin) { playSound(sfx.click); socket.emit('updateConfig', { nbPlayers: 2, modeAmi: modeAmi }); } });
+opt4.addEventListener('click', () => { if (isAdmin) { playSound(sfx.click); socket.emit('updateConfig', { nbPlayers: 4, modeAmi: modeAmi }); } });
+optAmi.addEventListener('click', () => { if (isAdmin) { playSound(sfx.click); socket.emit('updateConfig', { nbPlayers: nbPlayers, modeAmi: true }); } });
+optEnnemi.addEventListener('click', () => { if (isAdmin) { playSound(sfx.click); socket.emit('updateConfig', { nbPlayers: nbPlayers, modeAmi: false }); } });
 
 document.getElementById('btn-start-service').addEventListener('click', () => {
-    socket.emit('requestStart');
+    if (isAdmin) {
+        playSound(sfx.click); // 🔊 Son au lancement
+        socket.emit('requestStart');
+    }
 });
 
-// ON GARDE SEULEMENT CELUI-CI (Le plus complet)
+// ==========================================
+// 4. LOGIQUE JEU
+// ==========================================
+
 socket.on('gameStarted', (config) => {
-    modeAmi = config.modeAmi;
     showScreen('screen-game');
+    initGameEngine();
+
+    // Mise à jour de l'indice visuel sur le mur
+    const hintAction = document.getElementById('dynamic-action-text');
+    if (hintAction) {
+        // Comme on ne pousse plus, c'est INTERAGIR pour tout le monde
+        hintAction.innerText = "INTERAGIR (LEVIER)";
+        hintAction.className = config.modeAmi ? "hint-text mode-ami-text" : "hint-text mode-rival-text";
+    }
+});
+
+socket.on('worldState', (state) => {
+    allPlayers = state.players;
+});
+
+socket.on('playerDisconnected', (id) => { delete allPlayers[id]; });
+
+function initGameEngine() {
+    const canvas = document.getElementById('gameCanvas');
     resizeCanvas();
 
-    // Logique pour les indications "Style Pierre" sur le mur de gauche
-    const hintE = document.getElementById('dynamic-e-text');
-    const stoneE = document.querySelector('.key-stone.interact');
-
-    if (hintE && stoneE) {
-        if (modeAmi) {
-            hintE.innerText = "INTERAGIR";
-            hintE.className = "hint-text mode-ami-text";
-            stoneE.style.borderColor = "#55aa55"; // Bordure verte
-        } else {
-            hintE.innerText = "INTERAGIR";
-            hintE.className = "hint-text mode-rival-text";
-            stoneE.style.borderColor = "#aa5555"; // Bordure rouge
+    if (!renderer) {
+        renderer = new GameRenderer(canvas, selectedColor, socket);
+        function gameLoop() {
+            if (!isPaused) renderer.draw(allPlayers);
+            requestAnimationFrame(gameLoop);
         }
+        gameLoop();
     }
-});
+    startTestTimer();
+}
 
-// Mise à jour du score par Raphaël (Format Arcade 000000)
-socket.on('updateScore', (score) => {
-    document.getElementById('score').innerText = score.toString().padStart(6, '0');
-});
+function startTestTimer() {
+    let timeLeft = 180;
+    const timerDisplay = document.getElementById('timer');
+    if (window.gameTimer) clearInterval(window.gameTimer);
+    window.gameTimer = setInterval(() => {
+        if (!isPaused) {
+            timeLeft--;
+            const mins = Math.floor(timeLeft / 60);
+            const secs = timeLeft % 60;
+            if (timerDisplay) timerDisplay.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+            if (timeLeft <= 0) {
+                clearInterval(window.gameTimer);
+                endGame(false);
+            }
+        }
+    }, 1000);
+}
 
-// Mise à jour du Timer par Raphaël
-socket.on('updateTimer', (timeLeft) => {
-    const mins = Math.floor(timeLeft / 60);
-    const secs = timeLeft % 60;
-    document.getElementById('timer').innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-});
+function endGame(isVictory) {
+    // 🔊 Déclenchement des sons de fin
+    if (isVictory) playSound(sfx.victory);
+    else playSound(sfx.defeat);
 
-// Signal de fin envoyé par le serveur
-socket.on('endGame', (data) => {
-    endGame(data.isVictory, data.score);
-});
-
-function endGame(isVictory, finalScore) {
-    const resultScreen = document.getElementById('screen-result');
     const resultTitle = document.getElementById('result-title');
-    const resultMsg = document.getElementById('result-message');
-    const scoreDisp = document.getElementById('final-score');
-
-    resultScreen.classList.remove('victory', 'game-over');
-
-    if (isVictory) {
-        resultScreen.classList.add('victory');
-        resultTitle.innerText = "MISSION RÉUSSIE !";
-        resultMsg.innerText = "LE CHEF EST FIER DE VOUS !";
-    } else {
-        resultScreen.classList.add('game-over');
-        resultTitle.innerText = "BRIGADE VIRÉE !";
-        resultMsg.innerText = "RENDEZ VOS TABLIERS ET SORTEZ !";
-    }
-
-    scoreDisp.innerText = (finalScore || 0).toString().padStart(6, '0');
+    const finalScoreDisplay = document.getElementById('final-score');
+    const scoreEl = document.getElementById('score');
+    if (resultTitle) resultTitle.innerText = isVictory ? "MISSION RÉUSSIE !" : "BRIGADE VIRÉE !";
+    if (finalScoreDisplay) finalScoreDisplay.innerText = scoreEl ? scoreEl.innerText : "0";
     showScreen('screen-result');
 }
+
 // ==========================================
-// 6. SYSTÈME (INPUTS & RESIZE)
+// 5. SYSTÈME (RESIZE, PAUSE, TOUCHES)
 // ==========================================
 
 function resizeCanvas() {
     const canvas = document.getElementById('gameCanvas');
+    const hud = document.getElementById('hud');
     if (canvas) {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        canvas.width = 900;
+        const offset = hud ? hud.offsetHeight : 0;
+        canvas.height = window.innerHeight - offset;
     }
 }
 
 function togglePause() {
     if (document.getElementById('screen-game').classList.contains('active')) {
         isPaused = !isPaused;
-        document.getElementById('pause-overlay').style.display = isPaused ? 'flex' : 'none';
+        const overlay = document.getElementById('pause-overlay');
+        if (overlay) {
+            overlay.style.display = isPaused ? 'flex' : 'none';
+            playSound(sfx.click); // 🔊 Son au toggle pause
+        }
     }
 }
 
 window.addEventListener('resize', resizeCanvas);
 
 document.addEventListener('keydown', (e) => {
+    // 1. La Pause
     if (e.key === "Escape") togglePause();
 
-    // SÉCURITÉ TOUCHE E + LOGIQUE MODE
-    if (e && e.key && e.key.toLowerCase() === "e") {
-        if (modeAmi) {
-            console.log("Action : Levier");
-            socket.emit('toggleLever', 'lever1');
-        } else {
-            console.log("Action : Pousser");
-            socket.emit('playerAction', 'push');
-        }
+    // On ne traite les touches que si on est en jeu et pas en pause
+    if (isPaused || !document.getElementById('screen-game').classList.contains('active')) return;
+
+    const key = e.key.toLowerCase();
+
+    // --- 🏃 DÉPLACEMENTS (Q/D) ---
+    if (key === 'd' || key === 'arrowright') {
+        socket.emit('playerInput', { action: 'move', vx: 200 });
+    }
+    if (key === 'q' || key === 'a' || key === 'arrowleft') {
+        socket.emit('playerInput', { action: 'move', vx: -200 });
+    }
+
+    // --- 🪜 GRIMPER (Z/S ou Flèches) ---
+    // On utilise W/S ou Flèches pour monter/descendre sans sauter
+    if (key === 'arrowup' || key === 'w') {
+        socket.emit('playerInput', { action: 'move_v', vy: -200 });
+    }
+    if (key === 's' || key === 'arrowdown') {
+        socket.emit('playerInput', { action: 'move_v', vy: 200 });
+    }
+
+    // --- ⬆️ SAUT (Touche ALT ou Flèche Haut selon ton choix, ici on peut mettre Z) ---
+    // Si Z est pour sauter :
+    if (key === 'z') {
+        socket.emit('playerInput', { action: 'jump' });
+    }
+
+    // --- ⚡ ACTION SPÉCIALE (ESPACE = LEVIER + POWERUP) ---
+    if (e.code === "Space") {
+        e.preventDefault(); // Empêche le scroll de la page
+
+        // On envoie les deux ordres au serveur
+        socket.emit('toggleLever', 'lever1');
+        socket.emit('playerAction', 'powerup');
+
+        console.log("🔥 Powerup & Levier activés via ESPACE");
     }
 });
 
-document.getElementById('btn-resume').addEventListener('click', togglePause);
+// Arrêt du mouvement quand on relâche la touche
+document.addEventListener('keyup', (e) => {
+    const key = e.key.toLowerCase();
+
+    // Arrêt horizontal
+    if (['d', 'q', 'a', 'arrowright', 'arrowleft'].includes(key)) {
+        socket.emit('playerInput', { action: 'move', vx: 0 });
+    }
+    // Arrêt vertical (échelles)
+    if (['s', 'w', 'arrowup', 'arrowdown'].includes(key)) {
+        socket.emit('playerInput', { action: 'move_v', vy: 0 });
+    }
+});
