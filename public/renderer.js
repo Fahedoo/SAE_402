@@ -26,6 +26,10 @@ export class GameRenderer {
         this.imgFromage = new Image();
         this.imgFromage.src = 'assets/fromage.png'; 
 
+        // 🌟 NOUVEAU : Chargement de la Tomate
+        this.imgTomate = new Image();
+        this.imgTomate.src = 'assets/tomate.png'; 
+
         this.chefFrame = 0;             
         this.lastChefSwap = Date.now(); 
         
@@ -251,12 +255,21 @@ export class GameRenderer {
         }
 
         // 🌟 DESSIN DES OBJETS (Tomates et Coeurs)
-        this.ctx.font = "24px Arial";
         if (state.tomatoes) state.tomatoes.forEach(t => {
-            this.ctx.fillText("🍅", t.x, t.y);
+            if (this.imgTomate.complete && this.imgTomate.naturalWidth > 0) {
+                // On dessine l'image à 30x30 pixels
+                this.ctx.drawImage(this.imgTomate, t.x, t.y, 30, 30);
+            } else {
+                // Secours en cas de souci d'image
+                this.ctx.font = "24px Arial";
+                this.ctx.fillText("🍅", t.x, t.y + 24); 
+            }
         });
+        
+        // Coeurs (toujours en emoji)
+        this.ctx.font = "24px Arial";
         if (state.hearts) state.hearts.forEach(h => {
-            this.ctx.fillText("💖", h.x, h.y);
+            this.ctx.fillText("💖", h.x, h.y + 24);
         });
 
         // 🌟 DESSIN DES JOUEURS
