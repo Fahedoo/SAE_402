@@ -38,7 +38,7 @@ document.getElementById('btn-to-lobby').addEventListener('click', () => {
     if (currentPseudo !== "") {
         socket.emit('login', { pseudo: currentPseudo, color: selectedColor });
     } else {
-        alert("Hé commis ! Entre un nom !");
+        alert("Hé ! Entre un nom !");
     }
 });
 
