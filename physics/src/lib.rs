@@ -8,7 +8,7 @@ pub struct Platform {
     pub y: f32,
     pub width: f32,
     pub height: f32,
-    pub slope: f32, // ⚠️ NOUVEAU : Le Wasm comprend maintenant les pentes !
+    pub slope: f32, 
 }
 
 #[wasm_bindgen]
@@ -51,17 +51,20 @@ impl Player {
 pub struct World {
     gravity: f32,
     floor_y: f32,
+    pub width: f32, // ⚠️ NOUVEAU : La largeur logique du monde !
     players: Vec<Player>,
     platforms: Vec<Platform>,
 }
 
 #[wasm_bindgen]
 impl World {
+    // ⚠️ NOUVEAU : Le constructeur prend maintenant la largeur
     #[wasm_bindgen(constructor)]
-    pub fn new(gravity: f32, floor_y: f32) -> World {
+    pub fn new(gravity: f32, floor_y: f32, width: f32) -> World {
         World {
             gravity,
             floor_y,
+            width, // ⚠️ NOUVEAU
             players: Vec::new(),
             platforms: Vec::new(),
         }
@@ -110,6 +113,7 @@ impl World {
     pub fn step(&mut self, dt: f32) {
         let n = self.players.len();
 
+        // 1) Gravité + déplacement
         for p in self.players.iter_mut() {
             p.vy += self.gravity * dt;
             p.x += p.vx * dt;
@@ -118,6 +122,22 @@ impl World {
             p.jump_boost_ready = false;
         }
 
+        // 🌟 NOUVEAU : Murs physiques (Gauche et Droite) 🌟
+        for p in self.players.iter_mut() {
+            // Mur gauche (X = 0)
+            if p.x < 0.0 {
+                p.x = 0.0;
+                p.vx = 0.0; // On l'arrête net
+            }
+
+            // Mur droit (X = self.width)
+            if p.x + p.width > self.width {
+                p.x = self.width - p.width;
+                p.vx = 0.0; // On l'arrête net
+            }
+        }
+
+        // 2) Collision avec le sol
         for p in self.players.iter_mut() {
             if p.y + p.height > self.floor_y {
                 p.y = self.floor_y - p.height;
@@ -126,14 +146,12 @@ impl World {
             }
         }
 
-        // ⚠️ CORRECTION : Le Wasm calcule maintenant les pentes mathématiquement !
+        // 3) Collision avec les plateformes (Pentes intelligentes Wasm)
         for p in self.players.iter_mut() {
             for plat in &self.platforms {
                 let player_center = p.x + (p.width / 2.0);
 
-                // Si le joueur est bien aligné en X avec la plateforme
                 if player_center >= plat.x && player_center <= plat.x + plat.width {
-                    // On calcule la hauteur (Y) exacte de la pente sous les pieds du joueur
                     let ratio = (player_center - plat.x) / plat.width;
                     let exact_plat_y = plat.y + (plat.slope * ratio);
 
@@ -141,9 +159,8 @@ impl World {
                     let prev_bottom = prev_y + p.height;
                     let player_bottom = p.y + p.height;
 
-                    // On vérifie s'il atterrit sur cette hauteur exacte
                     let lands = p.vy >= 0.0
-                        && prev_bottom <= exact_plat_y + 15.0 // Marge de tolérance pour la pente
+                        && prev_bottom <= exact_plat_y + 15.0 // Marge de tolérance
                         && player_bottom >= exact_plat_y;
 
                     if lands {
@@ -155,7 +172,7 @@ impl World {
             }
         }
 
-        // Collisions entre joueurs (inchangé)
+        // 4) Collision joueur contre joueur
         for a in 0..n {
             for b in (a + 1)..n {
                 let (left, right) = self.players.split_at_mut(a + 1);
@@ -170,17 +187,11 @@ impl World {
                     let pb_is_above = pb.vy >= 0.0 && (pb.y + pb.height) <= (pa.y + 8.0);
 
                     if pa_is_above {
-                        pa.y = pb.y - pa.height;
-                        pa.vy = 0.0;
-                        pa.on_ground = true;
-                        pa.jump_boost_ready = true;
+                        pa.y = pb.y - pa.height; pa.vy = 0.0; pa.on_ground = true; pa.jump_boost_ready = true;
                         continue;
                     }
                     if pb_is_above {
-                        pb.y = pa.y - pb.height;
-                        pb.vy = 0.0;
-                        pb.on_ground = true;
-                        pb.jump_boost_ready = true;
+                        pb.y = pa.y - pb.height; pb.vy = 0.0; pb.on_ground = true; pb.jump_boost_ready = true;
                         continue;
                     }
                     if overlap_x < overlap_y {
@@ -204,6 +215,7 @@ impl World {
             }
         }
 
+        // 5) Re-clamp final au sol
         for p in self.players.iter_mut() {
             if p.y + p.height > self.floor_y {
                 p.y = self.floor_y - p.height;

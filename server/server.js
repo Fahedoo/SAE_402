@@ -11,10 +11,11 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, '../Public')));
 
-const world = new World(1980.0, 850.0); 
+// --- CONFIGURATION DU MONDE PHYSIQUE ---
+const LEVEL_WIDTH = 900; // Important variable for Wasm bounds
+// ⚠️ CORRECTION : Le Wasm prend maintenant : Gravité, Niveau du sol, Largeur logicielle !
+const world = new World(1980.0, 850.0, LEVEL_WIDTH); 
 
-const LEVEL_WIDTH = 900; 
-// ⚠️ On envoie maintenant le "slope" direct au Wasm de Fahed !
 const platformsData = [
     { x: 42,   y: 800, w: LEVEL_WIDTH-81, h: 18, slope: -50 }, // Bas (0)
     { x: 42,   y: 620, w: LEVEL_WIDTH-254, h: 18, slope: 45  }, // Étage 2 (1)
@@ -25,12 +26,12 @@ const platformsData = [
     { x: 300,  y: 70,  w: 170, h: 18, slope: 0 } // Le fromage ! (6)
 ];
 
-// Initialisation des plateformes physiques
+// Initialisation des plateformes physiques (One-way top)
 platformsData.forEach(p => {
     world.add_platform(p.x, p.y, p.w, p.h, p.slope);
 });
 
-// ⚠️ La Mathématique Ultime : Le serveur calcule la hauteur parfaite de l'échelle !
+// Mathématique pour calibrer les échelles au millimètre près
 function getPlatY(index, targetX) {
     const p = platformsData[index];
     return p.y + (p.slope * ((targetX - p.x) / p.w));
@@ -82,7 +83,7 @@ io.on('connection', (socket) => {
         
         // Spawn décalé en l'air
         const spawnX = 80 + (Object.keys(players).length * 40);
-        const wasmId = world.add_player(spawnX, 500, 30, 30); 
+        const wasmId = world.add_player(spawnX, 600, 30, 30); 
         playerWasmIds[socket.id] = wasmId;
 
         players[socket.id] = {
