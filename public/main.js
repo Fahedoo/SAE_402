@@ -86,7 +86,8 @@ socket.on('configUpdated', (config) => {
         if(extraSlotsContainer) extraSlotsContainer.style.display = 'none';
     } else {
         opt4.classList.add('active'); opt2.classList.remove('active');
-        if(extraSlotsContainer) extraSlotsContainer.style.display = 'block';
+        // 🌟 CORRECTION : 'contents' au lieu de 'block' pour que ça rentre dans la grille 2x2 !
+        if(extraSlotsContainer) extraSlotsContainer.style.display = 'contents';
     }
     if(modeAmi) {
         optAmi.classList.add('active'); optEnnemi.classList.remove('active');

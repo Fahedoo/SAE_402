@@ -74,8 +74,9 @@ io.on('connection', (socket) => {
     console.log(`Nouveau rat connecté : ${socket.id}`);
 
     socket.on('login', (data) => {
-        if (Object.keys(players).length >= MAX_PLAYERS) {
-            socket.emit('loginFailed', 'La cuisine est pleine ! (4 rats max)');
+        // ⚠️ CORRECTION : On vérifie la vraie limite choisie par le Chef (2 ou 4)
+        if (Object.keys(players).length >= gameConfig.nbPlayers) {
+            socket.emit('loginFailed', `La cuisine est pleine ! Limitée à ${gameConfig.nbPlayers} rats.`);
             return;
         }
 
@@ -99,18 +100,25 @@ io.on('connection', (socket) => {
         };
 
         socket.emit('loginSuccess', players[socket.id]);
-        socket.emit('currentPlayers', players);
         socket.emit('configUpdated', gameConfig);
         socket.emit('currentTomatoes', tomatoes);
         socket.emit('currentLevers', levers);
 
-        socket.broadcast.emit('newPlayer', players[socket.id]);
+        // On envoie la liste mise à jour à TOUT LE MONDE
+        io.emit('currentPlayers', players);
     });
-
+    
     socket.on('updateConfig', (newConfig) => {
         if (players[socket.id] && players[socket.id].isAdmin) {
+            // ⚠️ SÉCURITÉ : Si on est déjà 3 ou 4 joueurs, le Chef ne peut plus repasser à "2 RATS"
+            if (newConfig.nbPlayers === 2 && Object.keys(players).length > 2) {
+                return; // On annule le clic
+            }
+
             gameConfig = { ...gameConfig, ...newConfig };
-            socket.broadcast.emit('configUpdated', gameConfig);
+            
+            // ⚠️ CORRECTION : 'io.emit' au lieu de 'broadcast' pour que le bouton change aussi sur l'écran du Chef !
+            io.emit('configUpdated', gameConfig);
         }
     });
 
@@ -223,5 +231,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3020;
 server.listen(PORT, () => {
-    console.log(`Serveur Multi (Wasm Hardcore) opérationnel sur http://localhost:${PORT}`);
+    console.log(`Serveur Multi  opérationnel sur http://localhost:${PORT}`);
 });
