@@ -118,8 +118,16 @@ socket.on('worldState', (state) => {
         const myPlayer = state.players[socket.id];
         const livesEl = document.getElementById('lives-display');
         if (livesEl) {
-            if (myPlayer.isDead) livesEl.innerText = "👻 SPECTATEUR";
-            else livesEl.innerText = "❤️".repeat(myPlayer.lives);
+            if (myPlayer.isDead) {
+                livesEl.innerHTML = "👻 SPECTATEUR";
+            } else {
+                // 🌟 C'EST ICI QU'ON UTILISE LE SPRITE AU LIEU DES EMOJIS
+                let heartsHtml = "";
+                for(let i = 0; i < myPlayer.lives; i++) {
+                    heartsHtml += `<img src="assets/coeur.png" style="width: 24px; vertical-align: middle; margin-right: 5px; margin-bottom: 4px;">`;
+                }
+                livesEl.innerHTML = heartsHtml;
+            }
         }
     }
 });
@@ -142,7 +150,6 @@ socket.on('gameWon', (heroName) => {
     endGame(true); 
 });
 
-// 🌟 DÉFAITE GLOBALE (Tous les rats sont morts)
 socket.on('gameOver', () => {
     isPaused = true; 
     clearInterval(window.gameTimer); 
@@ -160,7 +167,7 @@ function initGameEngine() {
     if (!renderer) {
         renderer = new GameRenderer(canvas, selectedColor, socket); 
         function gameLoop() {
-            if (!isPaused) renderer.draw(currentState); // ⚠️ On passe TOUT l'état (avec tomates)
+            if (!isPaused) renderer.draw(currentState); 
             requestAnimationFrame(gameLoop);
         }
         gameLoop();
@@ -180,7 +187,6 @@ function startTestTimer() {
             if(timerDisplay) timerDisplay.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
             if (timeLeft <= 0) {
                 clearInterval(window.gameTimer);
-                // Défaite par le temps
                 const resultTitle = document.getElementById('result-title');
                 if (resultTitle) resultTitle.innerHTML = "<span class='text-shake-red'>LE TEMPS EST ÉCOULÉ !</span><br><span style='font-size: 1.5rem; color: #888; display: inline-block; margin-top: 20px; text-shadow: none; animation: none;'>PAS DE FROMAGE CE SOIR...</span>";
                 endGame(false);

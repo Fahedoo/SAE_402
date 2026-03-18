@@ -51,30 +51,27 @@ let tomatoes = [];
 let hearts = []; 
 let nextItemId = 1;
 
-// 🌟 NOUVEAU : Points de spawn fixes pour les cœurs (posés sur les plateformes)
 const heartSpawns = [
-    { x: 200, y: 760 }, // Étage du bas
-    { x: 500, y: 620 }, // Étage 2
-    { x: 300, y: 475 }, // Étage 3
-    { x: 650, y: 360 }, // Étage 4
-    { x: 250, y: 225 }  // Étage 5
+    { x: 200, y: 760 }, 
+    { x: 500, y: 620 }, 
+    { x: 300, y: 475 }, 
+    { x: 650, y: 360 }, 
+    { x: 250, y: 225 }  
 ];
 
-// Génération Tomates (Pluie de Dégâts)
 setInterval(() => {
     if (!gameConfig.isStarted || Object.keys(players).length === 0) return;
     if (tomatoes.length >= 8) return; 
     tomatoes.push({ id: nextItemId++, x: Math.floor(Math.random() * 800) + 20, y: -20, speed: Math.random() * 2 + 2 });
 }, 1500);
 
-// 🌟 NOUVEAU : Génération Cœurs (Soin rare sur la carte)
 setInterval(() => {
     if (!gameConfig.isStarted || Object.keys(players).length === 0) return;
-    if (hearts.length >= 1) return; // Un seul cœur maximum sur la carte à la fois !
+    if (hearts.length >= 1) return; 
 
     const spawn = heartSpawns[Math.floor(Math.random() * heartSpawns.length)];
-    hearts.push({ id: nextItemId++, x: spawn.x, y: spawn.y }); // Le cœur ne tombe plus, il spawn direct à la position
-}, 15000); // Un cœur apparaît toutes les 15 secondes
+    hearts.push({ id: nextItemId++, x: spawn.x, y: spawn.y }); 
+}, 15000); 
 
 io.on('connection', (socket) => {
     console.log(`Nouveau rat connecté : ${socket.id}`);
@@ -88,7 +85,8 @@ io.on('connection', (socket) => {
         const isChef = Object.keys(players).length === 0;
         
         const spawnX = 80 + (Object.keys(players).length * 40);
-        const wasmId = world.add_player(spawnX, 600, 30, 30); 
+        const wasmId = world.add_player(spawnX, 750, 30, 30); 
+        
         playerWasmIds[socket.id] = wasmId;
 
         players[socket.id] = {
@@ -174,7 +172,10 @@ setInterval(() => {
         player.isOverLadder = false;
         if (!player.isDead) { 
             for(const lad of serverLadders) {
-                if (px + 15 > lad.x && px - 15 < lad.x + lad.w && py > lad.y_top - 30 && py < lad.y_bottom) {   
+                // 🌟 CORRECTION DÉFINITIVE HITBOX ÉCHELLE :
+                // On compare la bordure gauche du rat (px) avec la bordure gauche de l'échelle (lad.x).
+                // Il faut qu'ils soient alignés à 10 pixels près maximum !
+                if (Math.abs(px - lad.x) <= 10 && py > lad.y_top - 30 && py < lad.y_bottom) {   
                     player.isOverLadder = true;
                     break;
                 }
@@ -187,7 +188,6 @@ setInterval(() => {
 
     world.step(1 / 60);
 
-    // Descente des Objets (Uniquement les tomates maintenant !)
     if (tomatoes.length > 0) {
         for (let i = tomatoes.length - 1; i >= 0; i--) {
             tomatoes[i].y += tomatoes[i].speed;
@@ -195,7 +195,6 @@ setInterval(() => {
         }
     }
 
-    // COLLISIONS (DEGATS & SOIN)
     for (let socketId in players) {
         let player = players[socketId];
         if (player.isDead) continue; 
@@ -203,7 +202,6 @@ setInterval(() => {
         let px = world.get_player_x(player.wasmId);
         let py = world.get_player_y(player.wasmId);
 
-        // Touché par une tomate ?
         for (let i = tomatoes.length - 1; i >= 0; i--) {
             let t = tomatoes[i];
             if (px < t.x + 20 && px + 30 > t.x && py < t.y + 20 && py + 30 > t.y) {
@@ -219,12 +217,10 @@ setInterval(() => {
             }
         }
 
-        // Ramasse un soin ?
         for (let i = hearts.length - 1; i >= 0; i--) {
             let h = hearts[i];
-            // La hitbox du coeur (statique sur la map)
             if (px < h.x + 30 && px + 30 > h.x && py < h.y + 30 && py + 30 > h.y) {
-                if (player.lives < 3) player.lives++; // Soin max 3
+                if (player.lives < 3) player.lives++; 
                 hearts.splice(i, 1);
             }
         }

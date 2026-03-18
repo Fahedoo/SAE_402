@@ -29,7 +29,6 @@ export class GameRenderer {
         this.imgTomate = new Image();
         this.imgTomate.src = 'assets/tomate.png'; 
         
-        // 🌟 NOUVEAU : Chargement du sprite Coeur
         this.imgCoeur = new Image();
         this.imgCoeur.src = 'assets/coeur.png';
 
@@ -48,6 +47,7 @@ export class GameRenderer {
             { x: 300,  y: 70,  w: 170, h: 18, slope: 0 } 
         ];
 
+        // 🌟 RETOUR À LA NORMALE : w = 30 pour le dessin !
         this.ladders = [
             { x: 600, topIndex: 1, bottomIndex: 0, w: 30 }, 
             { x: 150, topIndex: 2, bottomIndex: 1, w: 30 }, 
@@ -257,7 +257,6 @@ export class GameRenderer {
             this.ctx.drawImage(currentChefImg, chefX, chefY, cw, ch);
         }
 
-        // DESSIN DES OBJETS (Tomates et Coeurs)
         if (state.tomatoes) state.tomatoes.forEach(t => {
             if (this.imgTomate.complete && this.imgTomate.naturalWidth > 0) {
                 this.ctx.drawImage(this.imgTomate, t.x, t.y, 30, 30);
@@ -267,10 +266,8 @@ export class GameRenderer {
             }
         });
         
-        // 🌟 NOUVEAU : Affichage du sprite coeur
         if (state.hearts) state.hearts.forEach(h => {
             if (this.imgCoeur.complete && this.imgCoeur.naturalWidth > 0) {
-                // Petit effet de lévitation sympa pour le coeur (monte et descend doucement)
                 const floatY = Math.sin(Date.now() / 200) * 5; 
                 this.ctx.drawImage(this.imgCoeur, h.x, h.y + floatY, 30, 30);
             } else {
@@ -279,7 +276,6 @@ export class GameRenderer {
             }
         });
 
-        // DESSIN DES JOUEURS
         Object.values(state.players).forEach(p => {
             if (!p.color) p.color = 'gray'; 
 
@@ -306,7 +302,6 @@ export class GameRenderer {
                 let renderX = p.x;
                 let renderY = p.y; 
 
-                // Magnétisme visuel sur les pentes
                 if (p.on_ground) {
                     this.platforms.forEach((plat, index) => {
                         const footX = renderX + (ow / 2); 
@@ -320,15 +315,13 @@ export class GameRenderer {
                 }
 
                 this.ctx.save();
-
-                // On se place au centre de l'image pour faire des rotations propres
                 this.ctx.translate(renderX + ow / 2, renderY + oh / 2);
 
                 if (p.isDead) {
                     this.ctx.globalAlpha = 0.6; 
-                    this.ctx.rotate(Math.PI); // Les pattes en l'air !
+                    this.ctx.rotate(Math.PI); 
                 } else if (p.isInvulnerable && Math.floor(Date.now() / 100) % 2 === 0) {
-                    this.ctx.globalAlpha = 0.5; // Clignotement de dégât
+                    this.ctx.globalAlpha = 0.5; 
                 }
 
                 if (p.direction === 1 && !p.isClimbing && !p.isDead) { 
@@ -338,7 +331,6 @@ export class GameRenderer {
                 this.ctx.drawImage(skin, -ow / 2, -oh / 2, ow, oh);
                 this.ctx.restore(); 
 
-                // Couleur du texte au-dessus de la tête
                 this.ctx.fillStyle = p.isDead ? "#FF004D" : "white";
                 this.ctx.font = "bold 14px Arial";
                 this.ctx.textAlign = "center";
