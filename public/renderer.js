@@ -26,9 +26,12 @@ export class GameRenderer {
         this.imgFromage = new Image();
         this.imgFromage.src = 'assets/fromage.png'; 
 
-        // 🌟 NOUVEAU : Chargement de la Tomate
         this.imgTomate = new Image();
         this.imgTomate.src = 'assets/tomate.png'; 
+        
+        // 🌟 NOUVEAU : Chargement du sprite Coeur
+        this.imgCoeur = new Image();
+        this.imgCoeur.src = 'assets/coeur.png';
 
         this.chefFrame = 0;             
         this.lastChefSwap = Date.now(); 
@@ -254,25 +257,29 @@ export class GameRenderer {
             this.ctx.drawImage(currentChefImg, chefX, chefY, cw, ch);
         }
 
-        // 🌟 DESSIN DES OBJETS (Tomates et Coeurs)
+        // DESSIN DES OBJETS (Tomates et Coeurs)
         if (state.tomatoes) state.tomatoes.forEach(t => {
             if (this.imgTomate.complete && this.imgTomate.naturalWidth > 0) {
-                // On dessine l'image à 30x30 pixels
                 this.ctx.drawImage(this.imgTomate, t.x, t.y, 30, 30);
             } else {
-                // Secours en cas de souci d'image
                 this.ctx.font = "24px Arial";
                 this.ctx.fillText("🍅", t.x, t.y + 24); 
             }
         });
         
-        // Coeurs (toujours en emoji)
-        this.ctx.font = "24px Arial";
+        // 🌟 NOUVEAU : Affichage du sprite coeur
         if (state.hearts) state.hearts.forEach(h => {
-            this.ctx.fillText("💖", h.x, h.y + 24);
+            if (this.imgCoeur.complete && this.imgCoeur.naturalWidth > 0) {
+                // Petit effet de lévitation sympa pour le coeur (monte et descend doucement)
+                const floatY = Math.sin(Date.now() / 200) * 5; 
+                this.ctx.drawImage(this.imgCoeur, h.x, h.y + floatY, 30, 30);
+            } else {
+                this.ctx.font = "24px Arial";
+                this.ctx.fillText("💖", h.x, h.y + 24);
+            }
         });
 
-        // 🌟 DESSIN DES JOUEURS
+        // DESSIN DES JOUEURS
         Object.values(state.players).forEach(p => {
             if (!p.color) p.color = 'gray'; 
 
@@ -299,8 +306,8 @@ export class GameRenderer {
                 let renderX = p.x;
                 let renderY = p.y; 
 
-                // Magnétisme visuel sur les pentes uniquement si on est vivant et au sol
-                if (p.on_ground && !p.isDead) {
+                // Magnétisme visuel sur les pentes
+                if (p.on_ground) {
                     this.platforms.forEach((plat, index) => {
                         const footX = renderX + (ow / 2); 
                         if (footX >= plat.x && footX <= plat.x + plat.w) {
@@ -314,28 +321,30 @@ export class GameRenderer {
 
                 this.ctx.save();
 
-                // ⚠️ APPARENCE DES MORTS & DEGATS
+                // On se place au centre de l'image pour faire des rotations propres
+                this.ctx.translate(renderX + ow / 2, renderY + oh / 2);
+
                 if (p.isDead) {
-                    this.ctx.globalAlpha = 0.4; // Mode Fantôme
+                    this.ctx.globalAlpha = 0.6; 
+                    this.ctx.rotate(Math.PI); // Les pattes en l'air !
                 } else if (p.isInvulnerable && Math.floor(Date.now() / 100) % 2 === 0) {
                     this.ctx.globalAlpha = 0.5; // Clignotement de dégât
                 }
 
-                if (p.direction === 1 && !p.isClimbing) { 
-                    this.ctx.translate(renderX + ow / 2, renderY + oh / 2);
+                if (p.direction === 1 && !p.isClimbing && !p.isDead) { 
                     this.ctx.scale(-1, 1);
-                    this.ctx.drawImage(skin, -ow / 2, -oh / 2, ow, oh);
-                } else {
-                    this.ctx.drawImage(skin, renderX, renderY, ow, oh);
                 }
-                
-                this.ctx.restore(); // Remet l'alpha normal
+
+                this.ctx.drawImage(skin, -ow / 2, -oh / 2, ow, oh);
+                this.ctx.restore(); 
 
                 // Couleur du texte au-dessus de la tête
-                this.ctx.fillStyle = p.isDead ? "gray" : "white";
+                this.ctx.fillStyle = p.isDead ? "#FF004D" : "white";
                 this.ctx.font = "bold 14px Arial";
                 this.ctx.textAlign = "center";
-                this.ctx.fillText(p.pseudo || "Rat", renderX + ow/2, renderY - 10);
+                
+                let displayName = p.isDead ? `K.O. - ${p.pseudo}` : (p.pseudo || "Rat");
+                this.ctx.fillText(displayName, renderX + ow/2, renderY - 10);
             }
         });
 

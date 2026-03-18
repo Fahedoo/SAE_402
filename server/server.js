@@ -48,23 +48,33 @@ const MAX_PLAYERS = 4;
 
 let gameConfig = { nbPlayers: 2, modeAmi: true, isStarted: false };
 let tomatoes = [];
-let hearts = []; // 🌟 NOUVEAU : Liste des soins
+let hearts = []; 
 let nextItemId = 1;
-let levers = { lever1: false, lever2: false };
 
-// Génération Tomates (Dégâts)
+// 🌟 NOUVEAU : Points de spawn fixes pour les cœurs (posés sur les plateformes)
+const heartSpawns = [
+    { x: 200, y: 760 }, // Étage du bas
+    { x: 500, y: 620 }, // Étage 2
+    { x: 300, y: 475 }, // Étage 3
+    { x: 650, y: 360 }, // Étage 4
+    { x: 250, y: 225 }  // Étage 5
+];
+
+// Génération Tomates (Pluie de Dégâts)
 setInterval(() => {
     if (!gameConfig.isStarted || Object.keys(players).length === 0) return;
     if (tomatoes.length >= 8) return; 
     tomatoes.push({ id: nextItemId++, x: Math.floor(Math.random() * 800) + 20, y: -20, speed: Math.random() * 2 + 2 });
 }, 1500);
 
-// Génération Cœurs (Soins)
+// 🌟 NOUVEAU : Génération Cœurs (Soin rare sur la carte)
 setInterval(() => {
     if (!gameConfig.isStarted || Object.keys(players).length === 0) return;
-    if (hearts.length >= 2) return; 
-    hearts.push({ id: nextItemId++, x: Math.floor(Math.random() * 800) + 20, y: -20, speed: 1.5 });
-}, 8000);
+    if (hearts.length >= 1) return; // Un seul cœur maximum sur la carte à la fois !
+
+    const spawn = heartSpawns[Math.floor(Math.random() * heartSpawns.length)];
+    hearts.push({ id: nextItemId++, x: spawn.x, y: spawn.y }); // Le cœur ne tombe plus, il spawn direct à la position
+}, 15000); // Un cœur apparaît toutes les 15 secondes
 
 io.on('connection', (socket) => {
     console.log(`Nouveau rat connecté : ${socket.id}`);
@@ -91,7 +101,6 @@ io.on('connection', (socket) => {
             vx: 0,
             vy_input: 0,
             isOverLadder: false,
-            // 🌟 NOUVEAU : Variables de santé (Inspiré de Loïc)
             lives: 3,
             isDead: false,
             invulnerableUntil: 0
@@ -117,12 +126,9 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('toggleLever', (leverId) => { /* Gardé pour l'E */ });
-
     socket.on('playerInput', (data) => {
         let wasmId = playerWasmIds[socket.id];
         let player = players[socket.id];
-        // ⚠️ Si le joueur est K.O., on bloque totalement ses inputs (Spectateur)
         if (wasmId === undefined || !player || player.isDead) return;
 
         if (data.action === 'move') {
@@ -166,7 +172,7 @@ setInterval(() => {
         const py = world.get_player_y(wasmId);
         
         player.isOverLadder = false;
-        if (!player.isDead) { // ⚠️ Un fantôme ne grimpe pas aux échelles
+        if (!player.isDead) { 
             for(const lad of serverLadders) {
                 if (px + 15 > lad.x && px - 15 < lad.x + lad.w && py > lad.y_top - 30 && py < lad.y_bottom) {   
                     player.isOverLadder = true;
@@ -181,24 +187,18 @@ setInterval(() => {
 
     world.step(1 / 60);
 
-    // Descente des Objets
+    // Descente des Objets (Uniquement les tomates maintenant !)
     if (tomatoes.length > 0) {
         for (let i = tomatoes.length - 1; i >= 0; i--) {
             tomatoes[i].y += tomatoes[i].speed;
             if (tomatoes[i].y >= 850) tomatoes.splice(i, 1);
         }
     }
-    if (hearts.length > 0) {
-        for (let i = hearts.length - 1; i >= 0; i--) {
-            hearts[i].y += hearts[i].speed;
-            if (hearts[i].y >= 850) hearts.splice(i, 1);
-        }
-    }
 
-    // 🌟 LOGIQUE DES COLLISIONS (DEGATS & SOIN) 🌟
+    // COLLISIONS (DEGATS & SOIN)
     for (let socketId in players) {
         let player = players[socketId];
-        if (player.isDead) continue; // Les fantômes sont immunisés !
+        if (player.isDead) continue; 
         
         let px = world.get_player_x(player.wasmId);
         let py = world.get_player_y(player.wasmId);
@@ -209,10 +209,10 @@ setInterval(() => {
             if (px < t.x + 20 && px + 30 > t.x && py < t.y + 20 && py + 30 > t.y) {
                 if (Date.now() > player.invulnerableUntil) {
                     player.lives--;
-                    player.invulnerableUntil = Date.now() + 1000; // 1s d'invincibilité
+                    player.invulnerableUntil = Date.now() + 1000; 
                     if (player.lives <= 0) {
                         player.isDead = true;
-                        world.set_player_vx(player.wasmId, 0); // Stoppe le mouvement
+                        world.set_player_vx(player.wasmId, 0); 
                     }
                 }
                 tomatoes.splice(i, 1); 
@@ -222,7 +222,8 @@ setInterval(() => {
         // Ramasse un soin ?
         for (let i = hearts.length - 1; i >= 0; i--) {
             let h = hearts[i];
-            if (px < h.x + 20 && px + 30 > h.x && py < h.y + 20 && py + 30 > h.y) {
+            // La hitbox du coeur (statique sur la map)
+            if (px < h.x + 30 && px + 30 > h.x && py < h.y + 30 && py + 30 > h.y) {
                 if (player.lives < 3) player.lives++; // Soin max 3
                 hearts.splice(i, 1);
             }
@@ -234,7 +235,7 @@ setInterval(() => {
     let ratsOnCheese = 0;
     let firstRatPseudo = "";
     let totalRats = Object.keys(players).length;
-    let aliveRats = 0; // ⚠️ Pour vérifier le Game Over global
+    let aliveRats = 0; 
 
     for (let socketId in players) {
         let wasmId = playerWasmIds[socketId];
@@ -246,13 +247,12 @@ setInterval(() => {
         let isMovingAnimation = onGround && Math.abs(player.vx) > 0;
         let isClimbingAnimation = player.isOverLadder && (!onGround || Math.abs(player.vy_input) > 0);
 
-        if (!player.isDead) aliveRats++; // Compte les survivants
+        if (!player.isDead) aliveRats++; 
 
         stateToBroadcast.players[socketId] = {
             id: socketId, x: px, y: py,
             pseudo: player.pseudo, color: player.color, direction: player.direction, 
             isMoving: isMovingAnimation, isClimbing: isClimbingAnimation, on_ground: onGround,
-            // 🌟 Envoi des données vitales au navigateur
             lives: player.lives,
             isDead: player.isDead,
             isInvulnerable: Date.now() < player.invulnerableUntil
@@ -264,15 +264,13 @@ setInterval(() => {
         }
     }
 
-    // 🌟 CONDITIONS DE FIN DE PARTIE 🌟
+    // CONDITIONS DE FIN DE PARTIE
     if (totalRats > 0) {
-        // Condition de DEFAITE (Tout le monde est K.O)
         if (aliveRats === 0) {
             io.emit('gameOver');
             gameConfig.isStarted = false;
             tomatoes = []; hearts = [];
         }
-        // Conditions de VICTOIRE
         else if (gameConfig.modeAmi && ratsOnCheese === aliveRats && aliveRats > 0) {
             io.emit('gameWon', "LA BRIGADE");
             gameConfig.isStarted = false; 
