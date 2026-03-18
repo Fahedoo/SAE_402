@@ -11,27 +11,23 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, '../Public')));
 
-// --- CONFIGURATION DU MONDE PHYSIQUE ---
-const LEVEL_WIDTH = 900; // Important variable for Wasm bounds
-// ⚠️ CORRECTION : Le Wasm prend maintenant : Gravité, Niveau du sol, Largeur logicielle !
+const LEVEL_WIDTH = 900; 
 const world = new World(1980.0, 850.0, LEVEL_WIDTH); 
 
 const platformsData = [
-    { x: 42,   y: 800, w: LEVEL_WIDTH-81, h: 18, slope: -50 }, // Bas (0)
-    { x: 42,   y: 620, w: LEVEL_WIDTH-254, h: 18, slope: 45  }, // Étage 2 (1)
-    { x: 109,  y: 520, w: LEVEL_WIDTH-149, h: 18, slope: -50 }, // Étage 3 (2)
-    { x: 42,   y: 353, w: LEVEL_WIDTH-145, h: 18, slope: 50  }, // Étage 4 (3)
-    { x: 42,   y: 275, w: LEVEL_WIDTH-83, h: 18, slope: -65  }, // Étage 5 (4)
-    { x: 63,   y: 125, w: LEVEL_WIDTH - 228, h: 18, slope: 30 }, // Sommet Chef (5)
-    { x: 300,  y: 70,  w: 170, h: 18, slope: 0 } // Le fromage ! (6)
+    { x: 42,   y: 800, w: LEVEL_WIDTH-81, h: 18, slope: -50 }, 
+    { x: 42,   y: 620, w: LEVEL_WIDTH-254, h: 18, slope: 45  }, 
+    { x: 109,  y: 520, w: LEVEL_WIDTH-149, h: 18, slope: -50 }, 
+    { x: 42,   y: 353, w: LEVEL_WIDTH-145, h: 18, slope: 50  }, 
+    { x: 42,   y: 275, w: LEVEL_WIDTH-83, h: 18, slope: -65  }, 
+    { x: 63,   y: 125, w: LEVEL_WIDTH - 228, h: 18, slope: 30 }, 
+    { x: 300,  y: 70,  w: 170, h: 18, slope: 0 } 
 ];
 
-// Initialisation des plateformes physiques (One-way top)
 platformsData.forEach(p => {
     world.add_platform(p.x, p.y, p.w, p.h, p.slope);
 });
 
-// Mathématique pour calibrer les échelles au millimètre près
 function getPlatY(index, targetX) {
     const p = platformsData[index];
     return p.y + (p.slope * ((targetX - p.x) / p.w));
@@ -74,7 +70,6 @@ io.on('connection', (socket) => {
     console.log(`Nouveau rat connecté : ${socket.id}`);
 
     socket.on('login', (data) => {
-        // ⚠️ CORRECTION : On vérifie la vraie limite choisie par le Chef (2 ou 4)
         if (Object.keys(players).length >= gameConfig.nbPlayers) {
             socket.emit('loginFailed', `La cuisine est pleine ! Limitée à ${gameConfig.nbPlayers} rats.`);
             return;
@@ -82,7 +77,6 @@ io.on('connection', (socket) => {
 
         const isChef = Object.keys(players).length === 0;
         
-        // Spawn décalé en l'air
         const spawnX = 80 + (Object.keys(players).length * 40);
         const wasmId = world.add_player(spawnX, 600, 30, 30); 
         playerWasmIds[socket.id] = wasmId;
@@ -104,20 +98,15 @@ io.on('connection', (socket) => {
         socket.emit('currentTomatoes', tomatoes);
         socket.emit('currentLevers', levers);
 
-        // On envoie la liste mise à jour à TOUT LE MONDE
         io.emit('currentPlayers', players);
     });
     
     socket.on('updateConfig', (newConfig) => {
         if (players[socket.id] && players[socket.id].isAdmin) {
-            // ⚠️ SÉCURITÉ : Si on est déjà 3 ou 4 joueurs, le Chef ne peut plus repasser à "2 RATS"
             if (newConfig.nbPlayers === 2 && Object.keys(players).length > 2) {
-                return; // On annule le clic
+                return; 
             }
-
             gameConfig = { ...gameConfig, ...newConfig };
-            
-            // ⚠️ CORRECTION : 'io.emit' au lieu de 'broadcast' pour que le bouton change aussi sur l'écran du Chef !
             io.emit('configUpdated', gameConfig);
         }
     });
@@ -211,8 +200,10 @@ setInterval(() => {
         let wasmId = playerWasmIds[socketId];
         let player = players[socketId];
         
-        let isMovingAnimation = (world.get_player_on_ground(wasmId) && Math.abs(player.vx) > 0) 
-                             || (player.isOverLadder && Math.abs(player.vy_input) > 0);
+        // ⚠️ NOUVEAU : Séparation précise de la course et de la grimpe
+        let onGround = world.get_player_on_ground(wasmId);
+        let isMovingAnimation = onGround && Math.abs(player.vx) > 0;
+        let isClimbingAnimation = player.isOverLadder && (!onGround || Math.abs(player.vy_input) > 0);
 
         stateToBroadcast.players[socketId] = {
             id: socketId,
@@ -221,7 +212,9 @@ setInterval(() => {
             pseudo: player.pseudo, 
             color: player.color,
             direction: player.direction, 
-            isMoving: isMovingAnimation
+            isMoving: isMovingAnimation,
+            isClimbing: isClimbingAnimation, // ⚠️ On envoie ça à Selma !
+            on_ground: onGround
         };
     }
 
@@ -231,5 +224,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3020;
 server.listen(PORT, () => {
-    console.log(`Serveur Multi  opérationnel sur http://localhost:${PORT}`);
+    console.log(`Serveur Multi (Wasm Hardcore) opérationnel sur http://localhost:${PORT}`);
 });

@@ -2,6 +2,7 @@ import { VFXManager } from './vfx.js';
 
 const allSkinsIdle = {};
 const allSkinsRun = {};
+const allSkinsClimb = {}; // ⚠️ NOUVEAU CACHE POUR L'ÉCHELLE
 
 export class GameRenderer {
     constructor(canvas, color = 'gray', socket) { 
@@ -260,28 +261,57 @@ export class GameRenderer {
                 allSkinsRun[p.color] = new Image();
                 allSkinsRun[p.color].src = `assets/rat_run_${p.color}.png`;
             }
+            // ⚠️ CHARGEMENT DU SPRITE D'ÉCHELLE
+            if (!allSkinsClimb[p.color]) {
+                allSkinsClimb[p.color] = new Image();
+                // Assure-toi que les fichiers sur le serveur s'appellent bien "rat_echelle_gray.png" etc...
+                allSkinsClimb[p.color].src = `assets/rat_echelle_${p.color}.png`; 
+            }
 
-            const skin = p.isMoving ? allSkinsRun[p.color] : allSkinsIdle[p.color];
+            // ⚠️ DÉCISION DU SPRITE À AFFICHER
+            let skin = p.isMoving ? allSkinsRun[p.color] : allSkinsIdle[p.color];
+            
+            // Si le serveur dit que le joueur est sur l'échelle et grimpe (ou est suspendu), on écrase !
+            if (p.isClimbing) {
+                skin = allSkinsClimb[p.color];
+            }
 
             if (skin && skin.complete && skin.naturalWidth > 0) {
                 const ow = skin.naturalWidth; 
                 const oh = skin.naturalHeight;
                 
-                // ⚠️ On trace le rat EXACTEMENT où le moteur Wasm le dit ! (Plus d'aimant !)
+                let renderX = p.x;
+                let renderY = p.y; 
+
+                if (p.on_ground) {
+                    this.platforms.forEach((plat, index) => {
+                        const footX = renderX + (ow / 2); 
+                        
+                        if (footX >= plat.x && footX <= plat.x + plat.w) {
+                            const groundY = this.getPlatformY(index, footX);
+                            
+                            if (Math.abs(p.y - (groundY - oh)) < 60) {
+                                renderY = groundY - oh; 
+                            }
+                        }
+                    });
+                }
+
                 this.ctx.save();
-                if (p.direction === 1) { 
-                    this.ctx.translate(p.x + ow / 2, p.y + oh / 2);
+                // Si on grimpe, pas besoin de miroir gauche/droite, le sprite d'échelle fait face au mur
+                if (p.direction === 1 && !p.isClimbing) { 
+                    this.ctx.translate(renderX + ow / 2, renderY + oh / 2);
                     this.ctx.scale(-1, 1);
                     this.ctx.drawImage(skin, -ow / 2, -oh / 2, ow, oh);
                 } else {
-                    this.ctx.drawImage(skin, p.x, p.y, ow, oh);
+                    this.ctx.drawImage(skin, renderX, renderY, ow, oh);
                 }
                 this.ctx.restore();
 
                 this.ctx.fillStyle = "white";
                 this.ctx.font = "bold 14px Arial";
                 this.ctx.textAlign = "center";
-                this.ctx.fillText(p.pseudo || "Rat", p.x + ow/2, p.y - 10);
+                this.ctx.fillText(p.pseudo || "Rat", renderX + ow/2, renderY - 10);
             }
         });
 
