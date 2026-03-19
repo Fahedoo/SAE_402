@@ -33,6 +33,14 @@ export class GameRenderer {
         this.imgLeverOn = new Image();
         this.imgLeverOn.src = 'assets/lever_on.png'; 
 
+        // --- AJOUT PROJECTILES / ITEMS ---
+        this.imgTomate = new Image();
+        this.imgTomate.src = 'assets/tomate.png'; 
+        this.imgKnife = new Image();
+        this.imgKnife.src = 'assets/knife.png';
+        this.imgCoeur = new Image();
+        this.imgCoeur.src = 'assets/coeur.png';
+
         this.levers = [];
         this.cheeseActive = false;
 
@@ -43,61 +51,37 @@ export class GameRenderer {
 
         // ==========================================
         // --- NOUVEAU LEVEL DESIGN : AÉRÉ ET LONG ---
-        // Toutes les plateformes sont DROITES (slope: 0)
         // ==========================================
         this.platforms = [
-            { x: 0,   y: 800, w: this.canvas.width, h: 20, slope: 0 }, // Index 0: Sol complet
-
-            // Étage 1 (y: 650)
-            { x: 50,  y: 650, w: 300, h: 15, slope: 0 }, // Index 1: Gauche
-            { x: 550, y: 650, w: 300, h: 15, slope: 0 }, // Index 2: Droite
-
-            // Étage 2 (y: 500)
-            { x: 200, y: 500, w: 400, h: 15, slope: 0 }, // Index 3: Grand pont central
-            { x: 650, y: 500, w: 250, h: 15, slope: 0 }, // Index 4: Droite
-
-            // Étage 3 (y: 350)
-            { x: 50,  y: 350, w: 250, h: 15, slope: 0 }, // Index 5: Gauche
-            { x: 350, y: 350, w: 450, h: 15, slope: 0 }, // Index 6: Très grand pont droit
-
-            // Étage 4 (y: 200)
-            { x: 150, y: 200, w: 350, h: 15, slope: 0 }, // Index 7: Centre Gauche
-            { x: 550, y: 200, w: 300, h: 15, slope: 0 }, // Index 8: Centre Droite
-
-            // ==========================================
-            // --- CORRECTION : HAUTEUR DU SOMMET ---
-            // ==========================================
-            { x: 320, y: 150,  w: 400, h: 15, slope: 0 }  // Index 9: Objectif (Chef + Fromage)
+            { x: 0,   y: 800, w: this.canvas.width, h: 20, slope: 0 }, 
+            { x: 50,  y: 650, w: 300, h: 15, slope: 0 }, 
+            { x: 550, y: 650, w: 300, h: 15, slope: 0 }, 
+            { x: 200, y: 500, w: 400, h: 15, slope: 0 }, 
+            { x: 650, y: 500, w: 250, h: 15, slope: 0 }, 
+            { x: 50,  y: 350, w: 250, h: 15, slope: 0 }, 
+            { x: 350, y: 350, w: 450, h: 15, slope: 0 }, 
+            { x: 150, y: 200, w: 350, h: 15, slope: 0 }, 
+            { x: 550, y: 200, w: 300, h: 15, slope: 0 }, 
+            { x: 320, y: 150,  w: 400, h: 15, slope: 0 }  
         ];
 
-        // --- UN RÉSEAU D'ÉCHELLES STRATÉGIQUE ---
         this.ladders = [
-            // Du Sol à l'Étage 1
             { x: 100, topIndex: 1, bottomIndex: 0, w: 30 },
             { x: 710, topIndex: 2, bottomIndex: 0, w: 30 },
-
-            // De l'Étage 1 à l'Étage 2
             { x: 250, topIndex: 3, bottomIndex: 1, w: 30 },
             { x: 560, topIndex: 3, bottomIndex: 2, w: 30 },
             { x: 740, topIndex: 4, bottomIndex: 2, w: 30 },
-
-            // De l'Étage 2 à l'Étage 3
             { x: 210, topIndex: 5, bottomIndex: 3, w: 30 },
             { x: 450, topIndex: 6, bottomIndex: 3, w: 30 },
             { x: 680, topIndex: 6, bottomIndex: 4, w: 30 },
-
-            // De l'Étage 3 à l'Étage 4
             { x: 180, topIndex: 7, bottomIndex: 5, w: 30 },
             { x: 650, topIndex: 8, bottomIndex: 6, w: 30 },
-
-            // De l'Étage 4 au Sommet (Fromage)
             { x: 350, topIndex: 9, bottomIndex: 7, w: 30 },
             { x: 600, topIndex: 9, bottomIndex: 8, w: 30 }
         ];
 
-        // Échelles cassées (pour se cacher derrière)
         this.brokenLadders = [
-            { x: 350, topIndex: 3, bottomIndex: 0, w: 30 }, // Traverse le vide au milieu
+            { x: 350, topIndex: 3, bottomIndex: 0, w: 30 }, 
         ];
 
         this.setupTestControls();
@@ -249,29 +233,56 @@ export class GameRenderer {
         });
     }
 
-    draw(allPlayers = {}) {
+    draw(allPlayers = {}, state = { tomatoes: [], knives: [], hearts: [] }) {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
         this.drawLadders();
         this.drawBrokenLadders(); 
         this.drawPlatforms();
 
+        // --- DESSIN DES PROJECTILES (NOUVEAU) ---
+        
+        // Tomates
+        if (state.tomatoes) {
+            state.tomatoes.forEach(t => {
+                if (this.imgTomate.complete) this.ctx.drawImage(this.imgTomate, t.x, t.y, 25, 25);
+            });
+        }
+
+        // Couteaux (Missiles)
+        if (state.knives) {
+            state.knives.forEach(k => {
+                if (this.imgKnife.complete) {
+                    this.ctx.save();
+                    this.ctx.translate(k.x + 10, k.y + 20);
+                    this.ctx.rotate(Math.PI); // Pointe vers le bas
+                    this.ctx.drawImage(this.imgKnife, -10, -20, 20, 40);
+                    this.ctx.restore();
+                }
+            });
+        }
+
+        // Cœurs (Bonus)
+        if (state.hearts) {
+            state.hearts.forEach(h => {
+                if (this.imgCoeur.complete) {
+                    const bob = Math.sin(Date.now() / 200) * 5; // Petit effet flottant
+                    this.ctx.drawImage(this.imgCoeur, h.x, h.y + bob, 25, 25);
+                }
+            });
+        }
+
         // --- LE FROMAGE (Objectif) ---
         if (this.imgFromage && this.imgFromage.complete && this.imgFromage.naturalWidth > 0) {
             const fw = 100; 
             const echelleFromage = fw / this.imgFromage.naturalWidth; 
             const fh = this.imgFromage.naturalHeight * echelleFromage;
-            
             const platFromage = this.platforms[9]; 
             const fromX = platFromage.x + 180; 
             const fromY = this.getPlatformY(9, fromX + fw / 2) - fh + 21;
             
             this.ctx.save();
-            
-            if (!this.cheeseActive) {
-                this.ctx.filter = 'grayscale(100%) opacity(50%)';
-            }
-            
+            if (!this.cheeseActive) this.ctx.filter = 'grayscale(100%) opacity(50%)';
             this.ctx.drawImage(this.imgFromage, fromX, fromY, fw, fh);
             this.ctx.restore();
         }
@@ -279,30 +290,18 @@ export class GameRenderer {
        // --- DESSIN DES LEVIERS ---
         this.levers.forEach(lev => {
             const img = lev.active ? this.imgLeverOn : this.imgLeverOff;
-            const lw = 40; 
-            const lh = 40; 
-
-            // Si l'image est bien chargée, on la dessine
+            const lw = 40; const lh = 40; 
             if (img.complete && img.naturalWidth > 0) {
                 this.ctx.drawImage(img, lev.x - lw / 2, lev.y - lh, lw, lh);
             } else {
-                // 🚨 FALLBACK DEBUG : Si l'image bug, on dessine un gros carré de couleur !
-                this.ctx.fillStyle = lev.active ? '#27ae60' : '#c0392b'; // Vert ou Rouge
+                this.ctx.fillStyle = lev.active ? '#27ae60' : '#c0392b';
                 this.ctx.fillRect(lev.x - lw / 2, lev.y - lh, lw, lh);
-                this.ctx.strokeStyle = 'white';
-                this.ctx.lineWidth = 2;
-                this.ctx.strokeRect(lev.x - lw / 2, lev.y - lh, lw, lh);
             }
         });
 
-        // ==========================================
         // --- LE CHEF ---
-        // ==========================================
         if (Date.now() - this.lastChefSwap > 3000) {
-            this.chefFrame = this.chefFrame + 1;
-            if (this.chefFrame >= 3) {
-                this.chefFrame = 0;
-            }
+            this.chefFrame = (this.chefFrame + 1) % 3;
             this.lastChefSwap = Date.now();
         }
 
@@ -310,66 +309,53 @@ export class GameRenderer {
         const currentChefImg = chefImages[this.chefFrame];
 
         if (currentChefImg && currentChefImg.complete && currentChefImg.naturalWidth > 0) {
-            let echelle = 0.8;
-            let decalagePieds = 4;
-
+            let echelle = 0.8; let decalagePieds = 4;
             if (this.chefFrame === 1) { echelle = 0.95; decalagePieds = 8; }
             if (this.chefFrame === 2) { echelle = 0.75; decalagePieds = 2; }
 
             const cw = currentChefImg.naturalWidth * echelle;
             const ch = currentChefImg.naturalHeight * echelle;
-            
             const platSommet = this.platforms[9]; 
             const chefX = platSommet.x + 100; 
             const chefY = this.getPlatformY(9, chefX + cw / 2) - ch + decalagePieds;
-
             this.ctx.drawImage(currentChefImg, chefX, chefY, cw, ch);
         }
 
+        // --- LES JOUEURS ---
         Object.values(allPlayers).forEach(p => {
             if (!p.color) p.color = 'gray'; 
 
             if (!allSkinsIdle[p.color]) {
                 allSkinsIdle[p.color] = new Image();
                 allSkinsIdle[p.color].src = `assets/rat_idle_${p.color}.png`;
-            }
-            if (!allSkinsRun[p.color]) {
                 allSkinsRun[p.color] = new Image();
                 allSkinsRun[p.color].src = `assets/rat_run_${p.color}.png`;
-            }
-            if (!allSkinsClimb[p.color]) {
                 allSkinsClimb[p.color] = new Image();
                 allSkinsClimb[p.color].src = `assets/rat_echelle_${p.color}.png`; 
             }
 
             let skin = p.isMoving ? allSkinsRun[p.color] : allSkinsIdle[p.color];
-            
-            if (p.isClimbing) {
-                skin = allSkinsClimb[p.color];
-            }
+            if (p.isClimbing) skin = allSkinsClimb[p.color];
 
             if (skin && skin.complete && skin.naturalWidth > 0) {
-                const ow = skin.naturalWidth; 
-                const oh = skin.naturalHeight;
-                
-                let renderX = p.x;
-                let renderY = p.y; 
+                const ow = skin.naturalWidth; const oh = skin.naturalHeight;
+                let renderX = p.x; let renderY = p.y; 
 
                 if (p.on_ground) {
                     this.platforms.forEach((plat, index) => {
                         const footX = renderX + (ow / 2); 
-                        
                         if (footX >= plat.x && footX <= plat.x + plat.w) {
                             const groundY = this.getPlatformY(index, footX);
-                            
-                            if (Math.abs(p.y - (groundY - oh)) < 15) {
-                                renderY = groundY - oh; 
-                            }
+                            if (Math.abs(p.y - (groundY - oh)) < 15) renderY = groundY - oh; 
                         }
                     });
                 }
 
                 this.ctx.save();
+                // Effet mort ou invulnérable
+                if (p.isDead) { this.ctx.globalAlpha = 0.5; this.ctx.rotate(Math.PI); }
+                else if (p.isInvulnerable && Math.floor(Date.now() / 100) % 2 === 0) { this.ctx.globalAlpha = 0.3; }
+
                 if (p.direction === 1 && !p.isClimbing) { 
                     this.ctx.translate(renderX + ow / 2, renderY + oh / 2);
                     this.ctx.scale(-1, 1);
@@ -395,35 +381,18 @@ export class GameRenderer {
     setupTestControls() {
         window.addEventListener('keydown', (e) => {
             const key = e.key.toLowerCase();
-            
-            if (key === 'd' || key === 'arrowright') { 
-                this.socket.emit('playerInput', { action: 'move', vx: 200 }); 
-            }
-            if (key === 'q' || key === 'a' || key === 'arrowleft') { 
-                this.socket.emit('playerInput', { action: 'move', vx: -200 }); 
-            }
-            if (key === 'z' || key === 'w' || key === 'arrowup') { 
-                this.socket.emit('playerInput', { action: 'move_v', vy: -200 }); 
-            }
-            if (key === 's' || key === 'arrowdown') { 
-                this.socket.emit('playerInput', { action: 'move_v', vy: 200 }); 
-            }
-            if (key === ' ' || key === 'spacebar') { 
-                this.socket.emit('playerInput', { action: 'jump' });
-            }
-            if (key === 'e') {
-                this.socket.emit('interact'); 
-            }
+            if (key === 'd' || key === 'arrowright') this.socket.emit('playerInput', { action: 'move', vx: 200 }); 
+            if (key === 'q' || key === 'a' || key === 'arrowleft') this.socket.emit('playerInput', { action: 'move', vx: -200 }); 
+            if (key === 'z' || key === 'w' || key === 'arrowup') this.socket.emit('playerInput', { action: 'move_v', vy: -200 }); 
+            if (key === 's' || key === 'arrowdown') this.socket.emit('playerInput', { action: 'move_v', vy: 200 }); 
+            if (key === ' ' || key === 'spacebar') this.socket.emit('playerInput', { action: 'jump' });
+            if (key === 'e') this.socket.emit('interact'); 
         });
 
         window.addEventListener('keyup', (e) => {
             const key = e.key.toLowerCase();
-            if (['d', 'q', 'a', 'arrowright', 'arrowleft'].includes(key)) {
-                this.socket.emit('playerInput', { action: 'move', vx: 0 }); 
-            }
-            if (['z', 'w', 's', 'arrowup', 'arrowdown'].includes(key)) {
-                this.socket.emit('playerInput', { action: 'move_v', vy: 0 }); 
-            }
+            if (['d', 'q', 'a', 'arrowright', 'arrowleft'].includes(key)) this.socket.emit('playerInput', { action: 'move', vx: 0 }); 
+            if (['z', 'w', 's', 'arrowup', 'arrowdown'].includes(key)) this.socket.emit('playerInput', { action: 'move_v', vy: 0 }); 
         });
     }
 }

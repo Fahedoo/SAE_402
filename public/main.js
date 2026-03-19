@@ -11,6 +11,9 @@ let isPaused = false;
 let isAdmin = false; 
 
 let allPlayers = {}; 
+// --- NOUVEAU : Stockage des projectiles ---
+let currentTomatoes = [];
+let currentKnives = [];
 
 let currentLevers = [];
 let isCheeseActive = false;
@@ -124,8 +127,11 @@ socket.on('gameStarted', (config) => {
     }
 });
 
+// --- MODIFIÉ : Récupération de l'état complet du monde ---
 socket.on('worldState', (state) => {
     allPlayers = state.players; 
+    currentTomatoes = state.tomatoes || [];
+    currentKnives = state.knives || [];
 });
 
 socket.on('gameState', (data) => {
@@ -138,17 +144,13 @@ socket.on('gameState', (data) => {
     }
 });
 
-// 🌟 GESTION DE LA VICTOIRE
 socket.on('gameWon', (heroName) => {
     isPaused = true; 
-    
     const resultTitle = document.getElementById('result-title');
     if (resultTitle) {
         resultTitle.innerHTML = `<span class='text-glow-green'>VICTOIRE DE ${heroName.toUpperCase()} !</span>`;
     }
-    
-    // 🌟 C'est ICI qu'on utilise la fonction pour changer d'écran !
-    console.log("Tentative d'affichage victoire")
+    console.log("Tentative d'affichage victoire");
     showScreen('screen-result'); 
 });
 
@@ -162,7 +164,6 @@ socket.on('gameOver', () => {
     endGame(false);
 });
 
-// (L'unique et bon event de déconnexion)
 socket.on('playerDisconnected', (id) => { delete allPlayers[id]; });
 
 function initGameEngine() {
@@ -176,9 +177,19 @@ function initGameEngine() {
         renderer.cheeseActive = isCheeseActive;
 
         function gameLoop() {
-            if (!isPaused) renderer.draw(allPlayers);
-            requestAnimationFrame(gameLoop);
-        }
+    if (!isPaused && renderer) {
+        // On crée l'objet "state" tel que le renderer l'attend
+        const gameState = {
+            tomatoes: currentTomatoes,
+            knives: currentKnives,
+            hearts: [] // Tu pourras ajouter currentHearts ici plus tard
+        };
+
+        // On appelle le draw avec les deux arguments
+        renderer.draw(allPlayers, gameState);
+    }
+    requestAnimationFrame(gameLoop);
+}
         gameLoop();
     }
     startTestTimer();
@@ -203,7 +214,7 @@ function startTestTimer() {
         }
     }, 1000);
 }
-// 🌟 FONCTION ENDGAME AMÉLIORÉE
+
 function endGame(isVictory) {
     showScreen('screen-result');
 }
@@ -227,12 +238,9 @@ function togglePause() {
 }
 
 function showScreen(screenId) {
-    // 1. On cache tous les écrans (en enlevant la classe .active)
     document.querySelectorAll('.screen').forEach(s => {
         s.classList.remove('active');
     });
-
-    // 2. On affiche celui qu'on veut
     const target = document.getElementById(screenId);
     if (target) {
         target.classList.add('active');

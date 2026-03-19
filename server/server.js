@@ -60,7 +60,7 @@ serverLadders.forEach(lad => {
 });
 
 // ==========================================
-// --- GESTION DES LEVIERS (Générés par le serveur) ---
+// --- GESTION DES LEVIERS ---
 // ==========================================
 let leversData = [];
 let cheeseActive = false;
@@ -68,23 +68,14 @@ let cheeseActive = false;
 function spawnLevers() {
     leversData = [];
     cheeseActive = false;
-    
-    // Entre 2 et 4 leviers
     const numLevers = Math.floor(Math.random() * 3) + 2; 
-    
-    // Index des plateformes valides (on exclut 0:Sol et 9:Fromage)
     const validPlatforms = [1, 2, 3, 4, 5, 6, 7, 8];
-
-    // On mélange les plateformes pour ne pas toujours avoir les mêmes
     validPlatforms.sort(() => 0.5 - Math.random());
 
     for (let i = 0; i < numLevers; i++) {
         const platIndex = validPlatforms[i];
         const plat = platformsData[platIndex];
-        
-        // Choisir un X aléatoire sur cette plateforme (marge de 20px)
         const randomX = plat.x + 20 + Math.random() * (plat.w - 40);
-        
         leversData.push({ 
             id: `lever_${i}`, 
             x: randomX, 
@@ -95,7 +86,6 @@ function spawnLevers() {
     console.log(`🧀 Génération de ${numLevers} leviers aléatoires !`);
 }
 
-// Génération initiale
 spawnLevers();
 
 const players = {};
@@ -104,24 +94,36 @@ const MAX_PLAYERS = 4;
 
 let gameConfig = { nbPlayers: 2, modeAmi: true, isStarted: false };
 let tomatoes = [];
-let nextTomatoId = 1;
+let knives = []; // <--- AJOUT : Nouveau tableau pour les missiles
+let nextItemId = 1;
 
+// --- BOUCLE DE SPAWN (Tomates + Missiles) ---
 setInterval(() => {
-    // 🛑 LE BOUCLIER ANTI-TOMATES : on bloque tout direct !
-    return; 
-
     if (!gameConfig.isStarted || Object.keys(players).length === 0) return;
-    if (tomatoes.length >= 10) return; 
 
-    const newTomato = {
-        id: nextTomatoId++,
-        x: Math.floor(Math.random() * 750) + 20,
-        y: -10,
-        speed: Math.floor(Math.random() * 3) + 2
-    };
+    // Gestion des Tomates (Pluie classique)
+    if (tomatoes.length < 10) {
+        const newTomato = {
+            id: nextItemId++,
+            x: Math.floor(Math.random() * 750) + 20,
+            y: -10,
+            speed: Math.floor(Math.random() * 3) + 2
+        };
+        tomatoes.push(newTomato);
+        io.emit('newTomato', newTomato);
+    }
 
-    tomatoes.push(newTomato);
-    io.emit('newTomato', newTomato);
+    // Gestion des Missiles/Couteaux (Plus rares et plus rapides)
+    if (Math.random() > 0.7 && knives.length < 3) {
+        const newKnife = {
+            id: nextItemId++,
+            x: Math.floor(Math.random() * 900) + 50,
+            y: -50,
+            speed: 7 // Vitesse missile
+        };
+        knives.push(newKnife);
+        io.emit('newKnife', newKnife); // Assure-toi d'écouter ça côté client
+    }
 }, 2000);
 
 io.on('connection', (socket) => {
@@ -134,7 +136,6 @@ io.on('connection', (socket) => {
         }
 
         const isChef = Object.keys(players).length === 0;
-        
         const spawnX = 80 + (Object.keys(players).length * 40);
         const wasmId = world.add_player(spawnX, 600, 30, 30); 
         playerWasmIds[socket.id] = wasmId;
@@ -154,18 +155,13 @@ io.on('connection', (socket) => {
         socket.emit('loginSuccess', players[socket.id]);
         socket.emit('configUpdated', gameConfig);
         socket.emit('currentTomatoes', tomatoes);
-        
-        // Envoi des leviers et du statut du fromage au nouveau connecté
         socket.emit('gameState', { levers: leversData, cheeseActive });
-
         io.emit('currentPlayers', players);
     });
     
     socket.on('updateConfig', (newConfig) => {
         if (players[socket.id] && players[socket.id].isAdmin) {
-            if (newConfig.nbPlayers === 2 && Object.keys(players).length > 2) {
-                return; 
-            }
+            if (newConfig.nbPlayers === 2 && Object.keys(players).length > 2) return; 
             gameConfig = { ...gameConfig, ...newConfig };
             io.emit('configUpdated', gameConfig);
         }
@@ -174,29 +170,21 @@ io.on('connection', (socket) => {
     socket.on('requestStart', () => {
         if (players[socket.id] && players[socket.id].isAdmin) {
             gameConfig.isStarted = true;
-            // Quand on lance la partie, on régénère de nouveaux leviers
             spawnLevers(); 
             io.emit('gameStarted', gameConfig);
             io.emit('gameState', { levers: leversData, cheeseActive });
         }
     });
 
-    // ==========================================
-    // --- NOUVELLE INTERACTION LEVIER ---
-    // ==========================================
     socket.on('interact', () => {
         const p = players[socket.id];
         let wasmId = playerWasmIds[socket.id];
         if (!p || wasmId === undefined) return;
-
-        // On récupère la vraie position du rat
         const px = world.get_player_x(wasmId);
         const py = world.get_player_y(wasmId);
-
         let stateChanged = false;
 
         leversData.forEach(lev => {
-            // Hitbox d'interaction (le rat doit être à moins de 50px du levier)
             if (Math.abs(px - lev.x) < 50 && Math.abs(py - lev.y) < 50) {
                 lev.active = !lev.active;
                 stateChanged = true;
@@ -204,15 +192,8 @@ io.on('connection', (socket) => {
         });
 
         if (stateChanged) {
-            // Vérifie si TOUS les leviers sont sur "true"
             cheeseActive = leversData.every(l => l.active);
-            
-            // Broadcast l'état mis à jour à tout le monde
             io.emit('gameState', { levers: leversData, cheeseActive });
-            
-            if (cheeseActive) {
-                console.log("🧀 TOUS LES LEVIERS SONT ACTIFS ! Le fromage est débloqué !");
-            }
         }
     });
 
@@ -228,12 +209,7 @@ io.on('connection', (socket) => {
             else if (data.vx < 0) player.direction = -1;
         } else if (data.action === 'move_v') {
             player.vy_input = data.vy; 
-            
-            // 🌟 AJOUT : On prévient le moteur physique si le joueur veut descendre
-            if (world.set_player_dropping) {
-                world.set_player_dropping(wasmId, data.vy > 0);
-            }
-            
+            if (world.set_player_dropping) world.set_player_dropping(wasmId, data.vy > 0);
         } else if (data.action === 'jump') {
             world.player_jump(wasmId, 450); 
         }
@@ -244,23 +220,20 @@ io.on('connection', (socket) => {
             const wasAdmin = players[socket.id].isAdmin;
             delete players[socket.id];
             delete playerWasmIds[socket.id]; 
-
             if (Object.keys(players).length === 0) {
                 gameConfig.isStarted = false;
                 tomatoes = []; 
+                knives = [];
             } else if (wasAdmin) {
                 players[Object.keys(players)[0]].isAdmin = true;
             }
-
             io.emit('playerDisconnected', socket.id);
             io.emit('currentPlayers', players);
         }
     });
 });
 
-// ==========================================
-// --- LA BOUCLE PRINCIPALE DU JEU (60 FPS) ---
-// ==========================================
+// --- BOUCLE PRINCIPALE (60 FPS) ---
 setInterval(() => {
     if (!gameConfig.isStarted) return;
 
@@ -269,11 +242,8 @@ setInterval(() => {
         const wasmId = player.wasmId;
         const px = world.get_player_x(wasmId);
         const py = world.get_player_y(wasmId);
-        
-        // 🌟 LA CLÉ EST LÀ : On vérifie si le rat touche un sol solide !
         const onGround = world.get_player_on_ground(wasmId); 
         
-        // 1. Gestion des échelles
         player.isOverLadder = false;
         for(const lad of serverLadders) {
             if (Math.abs(px - lad.x) <= 10 && py > lad.y_top - 30 && py < lad.y_bottom) {   
@@ -286,74 +256,63 @@ setInterval(() => {
             world.set_player_vy(wasmId, player.vy_input);
         }
 
-        // 🌟 2. DÉTECTION DE LA VICTOIRE (Version corrigée)
-        // On enlève "onGround" car si le rat saute sur le fromage, ça doit compter aussi !
-        if (cheeseActive) { 
-            // On vérifie si le rat est dans la zone du fromage (Haut de l'écran entre X: 400 et 600)
-            if (px > 400 && px < 600 && py < 160) { 
-                console.log(`🏆 VICTOIRE ! ${player.pseudo} a touché le fromage !`);
-                
-                // 1. On prévient DIRECTEMENT les clients
+        if (cheeseActive && onGround) {
+            if (px > 460 && px < 560 && Math.abs(py - 120) < 5) {
                 io.emit('gameWon', player.pseudo); 
-
-                // 2. On coupe le moteur
                 gameConfig.isStarted = false; 
                 tomatoes = []; 
+                knives = [];
                 return; 
             }
         }
-    
     }
 
     world.step(1 / 60);
 
-    // 2. Gestion des Tomates
-    if (tomatoes.length > 0) {
-        for (let i = tomatoes.length - 1; i >= 0; i--) {
-            let tom = tomatoes[i];
-            tom.y += tom.speed;
+    // --- GESTION DES COLLISIONS (TOMATES & COUTEAUX) ---
+    const allProjectiles = [
+        { list: tomatoes, name: 'tomate', event: 'removeTomato' },
+        { list: knives, name: 'couteau', event: 'removeKnife' }
+    ];
 
-            // 🌟 NOUVEAU : DÉTECTION DE LA DÉFAITE (Collision Tomate / Rat)
+    allProjectiles.forEach(proj => {
+        for (let i = proj.list.length - 1; i >= 0; i--) {
+            let item = proj.list[i];
+            item.y += item.speed;
+
             let isHit = false;
             for (let socketId in players) {
                 let p = players[socketId];
                 let pX = world.get_player_x(p.wasmId);
                 let pY = world.get_player_y(p.wasmId);
 
-                // Hitbox de collision (si le centre de la tomate est à moins de 30px du centre du rat)
-                if (Math.abs(tom.x - (pX + 15)) < 30 && Math.abs(tom.y - (pY + 15)) < 30) {
-                    console.log(`💥 K.O. ! ${p.pseudo} s'est pris une tomate !`);
+                // Hitbox simplifiée
+                if (Math.abs(item.x - (pX + 15)) < 30 && Math.abs(item.y - (pY + 15)) < 30) {
                     isHit = true;
                     break;
                 }
             }
 
             if (isHit) {
-                gameConfig.isStarted = false; // On stoppe le moteur
-                tomatoes = []; 
-                io.emit('gameOver'); // On déclenche l'écran de défaite !
-                return; // Fin du bal
+                gameConfig.isStarted = false;
+                tomatoes = []; knives = [];
+                io.emit('gameOver');
+                return; 
             }
 
-            // Si la tomate touche le sol (850), on la supprime
-            if (tom.y >= 850) {
-                io.emit('removeTomato', tom.id);
-                tomatoes.splice(i, 1);
+            if (item.y >= 850) {
+                io.emit(proj.event, item.id);
+                proj.list.splice(i, 1);
             }
         }
-    }
+    });
 
-    // 3. Envoi de l'état du monde aux joueurs
+    // --- BROADCAST ÉTAT DU MONDE ---
     const stateToBroadcast = { players: {} };
-
     for (let socketId in players) {
         let wasmId = playerWasmIds[socketId];
         let player = players[socketId];
-        
         let onGround = world.get_player_on_ground(wasmId);
-        let isMovingAnimation = onGround && Math.abs(player.vx) > 0;
-        let isClimbingAnimation = player.isOverLadder && (!onGround || Math.abs(player.vy_input) > 0);
-
         stateToBroadcast.players[socketId] = {
             id: socketId,
             x: world.get_player_x(wasmId),
@@ -361,17 +320,16 @@ setInterval(() => {
             pseudo: player.pseudo, 
             color: player.color,
             direction: player.direction, 
-            isMoving: isMovingAnimation,
-            isClimbing: isClimbingAnimation,
+            isMoving: onGround && Math.abs(player.vx) > 0,
+            isClimbing: player.isOverLadder && (!onGround || Math.abs(player.vy_input) > 0),
             on_ground: onGround
         };
     }
-
     io.emit('worldState', stateToBroadcast);
 
 }, 1000 / 60);
 
 const PORT = process.env.PORT || 3050;
 server.listen(PORT, () => {
-    console.log(`Serveur Multi (Wasm Hardcore) opérationnel sur http://localhost:${PORT}`);
+    console.log(`Serveur Multi opérationnel sur http://localhost:${PORT}`);
 });
