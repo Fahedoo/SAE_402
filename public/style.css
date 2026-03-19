@@ -8,7 +8,8 @@
 }
 
 body {
-    background-image: url('assets/fond_ambiance.jpg'); 
+    /* Image de fond pour les côtés - On fusionne les deux blocs body ici */
+    background-image: url('assets/fond_ambiance.jpg');
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
@@ -19,24 +20,24 @@ body {
     justify-content: center;
     align-items: center;
     overflow: hidden;
-    background-color: #111; /* Couleur de secours */
 }
 
 /* ==========================================
    2. SYSTÈME D'ÉCRANS (SPA)
    ========================================== */
 .screen {
-    display: none; 
+    display: none;
     flex-direction: column;
     align-items: center;
-    justify-content: center; /* Centrage vertical des menus */
+    justify-content: center;
+    /* Centrage vertical des menus */
     width: 100vw;
     height: 100vh;
     position: fixed;
     top: 0;
     left: 0;
     /* On enlève le fond noir ici pour voir l'image ambiance derrière les menus */
-    background-color: rgba(0, 0, 0, 0.6); 
+    background-color: rgba(0, 0, 0, 0.6);
     z-index: 1;
 }
 
@@ -50,9 +51,8 @@ body {
     width: 100vw;
     height: 100vh;
     position: relative;
-    flex-direction: column; /* 🌟 FIX : On empile proprement le HUD et le Canvas */
-    background: transparent; 
-    /* ATTENTION : Pas de "display: flex" ici pour ne pas forcer l'affichage ! */
+    /* Pas de fond noir ici pour laisser voir l'ambiance sur les côtés */
+    background: transparent;
 }
 
 /* ==========================================
@@ -62,11 +62,17 @@ body {
     font-size: 2.5rem;
     margin-bottom: 40px;
     text-align: center;
-    line-height: 1.3; /* Évite que les deux lignes de texte ne se touchent */
 }
 
-.retro-title .white { color: #ffffff; text-shadow: 4px 4px #444; }
-.retro-title .red { color: #FF004D; text-shadow: 4px 4px #5a001b; }
+.retro-title .white {
+    color: #ffffff;
+    text-shadow: 4px 4px #444;
+}
+
+.retro-title .red {
+    color: #FF004D;
+    text-shadow: 4px 4px #5a001b;
+}
 
 .menu-box {
     background: #1a1a1a;
@@ -158,9 +164,20 @@ button:active {
     transition: all 0.2s ease;
 }
 
-.choice-card.active { border-color: #FFCC00; transform: scale(1.02); }
-.mode-ami.active { border-color: #00FF41; color: #00FF41; }
-.mode-ennemi.active { border-color: #FF004D; color: #FF004D; }
+.choice-card.active {
+    border-color: #FFCC00;
+    transform: scale(1.02);
+}
+
+.mode-ami.active {
+    border-color: #00FF41;
+    color: #00FF41;
+}
+
+.mode-ennemi.active {
+    border-color: #FF004D;
+    color: #FF004D;
+}
 
 .slots-container {
     display: grid;
@@ -190,66 +207,184 @@ button:active {
    ========================================== */
 #hud {
     width: 100%;
-    height: 80px; /* 🌟 FIX : Hauteur verrouillée, le canvas ne sautera plus ! */
-    flex-shrink: 0;
     z-index: 10;
     display: flex;
     justify-content: space-around;
     align-items: center;
     background: rgba(0, 0, 0, 0.8);
-    padding: 0 20px;
+    padding: 20px;
     color: #FFCC00;
     border-bottom: 4px solid #FF004D;
 }
 
 #gameCanvas {
-    background-image: url('assets/fond.jpg'); 
-    background-size: 100% 100%; /* S'assure que la cuisine remplit bien le plateau */
+    background-image: url('assets/fond.jpg');
+    background-size: 100% 100%;
+    /* S'assure que la cuisine remplit bien le plateau */
     background-position: center;
     background-repeat: no-repeat;
     width: 900px;
     flex-grow: 1;
     display: block;
     image-rendering: pixelated;
-    box-shadow: 0 0 20px rgba(0,0,0,0.8);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
 }
 
-/* ==========================================
-   7. EFFETS VISUELS DE VICTOIRE / DÉFAITE
-   ========================================== */
+/* style.css */
 
-/* Texte de Victoire (Pulsation Néon) */
-.text-glow-green {
-    color: #00FF41;
-    text-shadow: 0 0 10px rgba(0, 255, 65, 0.8), 4px 4px 0px #005a17;
-    display: inline-block;
-    animation: pulse-green 1.5s infinite alternate;
+.kitchen-panel {
+    position: absolute;
+    /* 🌟 FIX : On le place exactement dans le coin dessiné */
+    bottom: 30px;
+    left: 20px;
+    width: 250px;
+    /* Plus large pour faire un vrai panneau */
+
+    /* Look Ardoise/Bois */
+    background: #1a1a1a;
+    /* Gris très foncé */
+    border: 6px solid #8b4513;
+    /* Cadre en bois marron */
+    border-radius: 4px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+    /* Ombre pour la profondeur */
+
+    padding: 15px;
+    text-align: left;
+    z-index: 100;
+    transition: opacity 1.5s ease;
+    pointer-events: none;
 }
 
-/* Texte du Chef / Défaite (Tremblement de rage) */
-.text-shake-red {
-    color: #FF004D;
-    text-shadow: 0 0 15px rgba(255, 0, 77, 0.8), 4px 4px 0px #5a001b;
-    display: inline-block;
-    animation: rage-shake 0.4s infinite;
+.panel-title {
+    font-family: 'Press Start 2P', cursive;
+    /* Si tu as cette police retro */
+    font-size: 10px;
+    color: #f1c40f;
+    /* Jaune fromage pour le titre */
+    margin-bottom: 15px;
+    text-align: center;
+    border-bottom: 2px solid #555;
+    padding-bottom: 5px;
 }
 
-/* Animations CSS natives */
-@keyframes pulse-green {
-    0% { transform: scale(1); text-shadow: 0 0 10px rgba(0, 255, 65, 0.8), 4px 4px 0px #005a17; }
-    100% { transform: scale(1.05); text-shadow: 0 0 25px rgba(0, 255, 65, 1), 6px 6px 0px #005a17; }
+.kitchen-panel p {
+    color: #eee;
+    /* Blanc cassé, comme de la craie */
+    font-size: 12px;
+    margin: 8px 0;
+    font-family: Arial, sans-serif;
+    text-transform: uppercase;
+    font-weight: bold;
 }
 
-@keyframes rage-shake {
-    0% { transform: translate(1px, 1px) rotate(0deg); }
-    10% { transform: translate(-1px, -2px) rotate(-1deg); }
-    20% { transform: translate(-3px, 0px) rotate(1deg); }
-    30% { transform: translate(3px, 2px) rotate(0deg); }
-    40% { transform: translate(1px, -1px) rotate(1deg); }
-    50% { transform: translate(-1px, 2px) rotate(-1deg); }
-    60% { transform: translate(-3px, 1px) rotate(0deg); }
-    70% { transform: translate(3px, 1px) rotate(-1deg); }
-    80% { transform: translate(-1px, -1px) rotate(1deg); }
-    90% { transform: translate(1px, 2px) rotate(0deg); }
-    100% { transform: translate(1px, -2px) rotate(-1deg); }
+.kitchen-key {
+    background: #eee;
+    /* Look touche blanche */
+    color: #1a1a1a;
+    /* Texte noir */
+    padding: 2px 6px;
+    border-radius: 3px;
+    border-bottom: 2px solid #999;
+    /* Petit effet 3D */
+    margin: 0 4px;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 9px;
+}
+
+.panel-hint {
+    margin-top: 15px;
+    font-size: 10px;
+    color: #aaa;
+    font-style: italic;
+    text-align: center;
+}
+
+.kitchen-circle {
+    position: absolute;
+    bottom: 30px;
+    left: 290px;
+    /* Aligné à droite de ton panneau de touches (qui fait 250px + marge) */
+    width: 70px;
+    height: 70px;
+
+    background: #1a1a1a;
+    /* Ardoise */
+    border: 5px solid #8b4513;
+    /* Cadre bois */
+    border-radius: 50%;
+    /* Cercle parfait */
+    box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.6);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.circle-inner {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+#powerup-icon {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    /* Petit effet de lueur pour dire que c'est prêt ! */
+    filter: drop-shadow(0 0 5px rgba(241, 196, 15, 0.5));
+}
+
+#powerup-empty {
+    font-family: 'Press Start 2P', cursive;
+    color: #444;
+    /* Gris foncé, presque invisible */
+    font-size: 20px;
+}
+
+/* Animation quand on ramasse quelque chose */
+.powerup-pop {
+    animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes pop {
+    0% {
+        transform: scale(0.5);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.inventory-box {
+    position: absolute;
+    bottom: 30px;
+    left: 300px;
+    /* Vérifie que ce n'est pas la même valeur que ton mémo ! */
+    width: 140px;
+    height: 110px;
+    background: #1a1a1a;
+    border: 5px solid #8b4513;
+    z-index: 100;
+    /* 👈 TRÈS IMPORTANT : pour passer devant le Canvas */
+    text-align: center;
+    padding: 10px;
+}
+
+.inventory-slot {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 60px;
+}
+
+#inventory-empty {
+    font-family: 'Press Start 2P', cursive;
+    font-size: 10px;
+    color: #444;
 }

@@ -1,28 +1,26 @@
-// vfx.js - Explosion Arcade avec visibilité améliorée
-
 class Particle {
     constructor(x, y, color) {
         this.x = x;
         this.y = y;
         this.color = color;
-        
+
         const angle = Math.random() * Math.PI * 2;
         const speed = Math.random() * 6 + 3; // Vitesse un poil plus douce
-        
+
         this.vx = Math.cos(angle) * speed;
         this.vy = Math.sin(angle) * speed;
-        
-        this.radius = Math.random() * 3 + 2; 
+
+        this.radius = Math.random() * 3 + 2;
         this.life = 1.0;
-        
+
         // --- RÉGLAGE DURÉE ---
         // Avant c'était 0.08, on passe à 0.03 pour que ça reste 
         // environ 1/2 seconde à l'écran (assez pour être vu)
-        this.decay = Math.random() * 0.03 + 0.02; 
-        
+        this.decay = Math.random() * 0.03 + 0.02;
+
         // On réduit la friction (0.95 au lieu de 0.85) 
         // pour que l'explosion s'étende un peu plus
-        this.friction = 0.85; 
+        this.friction = 0.85;
     }
 
     update() {
@@ -30,7 +28,7 @@ class Particle {
         this.vy *= this.friction;
         this.x += this.vx;
         this.y += this.vy;
-        
+
         this.life -= this.decay;
     }
 
@@ -40,15 +38,15 @@ class Particle {
         ctx.save();
         ctx.globalAlpha = this.life;
         ctx.fillStyle = this.color;
-        
+
         // Dessin "Pixel Perfect"
         ctx.fillRect(
-            Math.round(this.x), 
-            Math.round(this.y), 
-            this.radius, 
+            Math.round(this.x),
+            Math.round(this.y),
+            this.radius,
             this.radius
         );
-        
+
         ctx.restore();
     }
 }

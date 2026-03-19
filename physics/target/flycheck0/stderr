@@ -1,0 +1,833 @@
+   0.158321200s  INFO prepare_target{force=false package_id=physics v0.1.0 (E:\MMI\Semestre 4\SAE402\SAE_402\physics) target="physics"}: cargo::core::compiler::fingerprint: fingerprint error for physics v0.1.0 (E:\MMI\Semestre 4\SAE402\SAE_402\physics)/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("physics", ["cdylib"], "E:\\MMI\\Semestre 4\\SAE402\\SAE_402\\physics\\src\\lib.rs", Edition2021) }
+   0.158396100s  INFO prepare_target{force=false package_id=physics v0.1.0 (E:\MMI\Semestre 4\SAE402\SAE_402\physics) target="physics"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\physics-c84f2454b2803c93\lib-physics`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_libgit2_prerelease
+  12: <unknown>
+  13: <unknown>
+  14: <unknown>
+  15: <unknown>
+  16: git_midx_writer_dump
+  17: git_filter_source_repo
+  18: git_midx_writer_dump
+  19: BaseThreadInitThunk
+  20: RtlUserThreadStart
+   0.194185900s  INFO prepare_target{force=false package_id=wasm-bindgen v0.2.114 target="wasm_bindgen"}: cargo::core::compiler::fingerprint: fingerprint error for wasm-bindgen v0.2.114/Check { test: false }/TargetInner { tested: false, ..: lib_target("wasm_bindgen", ["lib"], "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\wasm-bindgen-0.2.114\\src\\lib.rs", Edition2021) }
+   0.194249000s  INFO prepare_target{force=false package_id=wasm-bindgen v0.2.114 target="wasm_bindgen"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\wasm-bindgen-4af02af5d11fdc1d\lib-wasm_bindgen`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_libgit2_prerelease
+  13: <unknown>
+  14: <unknown>
+  15: <unknown>
+  16: <unknown>
+  17: git_midx_writer_dump
+  18: git_filter_source_repo
+  19: git_midx_writer_dump
+  20: BaseThreadInitThunk
+  21: RtlUserThreadStart
+   0.195608900s  INFO prepare_target{force=false package_id=cfg-if v1.0.4 target="cfg_if"}: cargo::core::compiler::fingerprint: fingerprint error for cfg-if v1.0.4/Check { test: false }/TargetInner { ..: lib_target("cfg_if", ["lib"], "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\cfg-if-1.0.4\\src\\lib.rs", Edition2018) }
+   0.195643100s  INFO prepare_target{force=false package_id=cfg-if v1.0.4 target="cfg_if"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\cfg-if-3dcb42ca3a02dcb5\lib-cfg_if`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_libgit2_prerelease
+  14: <unknown>
+  15: <unknown>
+  16: <unknown>
+  17: <unknown>
+  18: git_midx_writer_dump
+  19: git_filter_source_repo
+  20: git_midx_writer_dump
+  21: BaseThreadInitThunk
+  22: RtlUserThreadStart
+   0.225773200s  INFO prepare_target{force=false package_id=once_cell v1.21.4 target="once_cell"}: cargo::core::compiler::fingerprint: fingerprint error for once_cell v1.21.4/Check { test: false }/TargetInner { ..: lib_target("once_cell", ["lib"], "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\once_cell-1.21.4\\src\\lib.rs", Edition2021) }
+   0.225802300s  INFO prepare_target{force=false package_id=once_cell v1.21.4 target="once_cell"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\once_cell-4c09f6ea2719d49f\lib-once_cell`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_libgit2_prerelease
+  14: <unknown>
+  15: <unknown>
+  16: <unknown>
+  17: <unknown>
+  18: git_midx_writer_dump
+  19: git_filter_source_repo
+  20: git_midx_writer_dump
+  21: BaseThreadInitThunk
+  22: RtlUserThreadStart
+   0.323860500s  INFO prepare_target{force=false package_id=wasm-bindgen v0.2.114 target="build-script-build"}: cargo::core::compiler::fingerprint: fingerprint error for wasm-bindgen v0.2.114/RunCustomBuild/TargetInner { ..: custom_build_target("build-script-build", "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\wasm-bindgen-0.2.114\\build.rs", Edition2021) }
+   0.323888300s  INFO prepare_target{force=false package_id=wasm-bindgen v0.2.114 target="build-script-build"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\wasm-bindgen-3dc54b8e8535d9f9\run-build-script-build-script-build`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: git_libgit2_prerelease
+  15: <unknown>
+  16: <unknown>
+  17: <unknown>
+  18: <unknown>
+  19: git_midx_writer_dump
+  20: git_filter_source_repo
+  21: git_midx_writer_dump
+  22: BaseThreadInitThunk
+  23: RtlUserThreadStart
+   0.346257300s  INFO prepare_target{force=false package_id=wasm-bindgen v0.2.114 target="build-script-build"}: cargo::core::compiler::fingerprint: fingerprint error for wasm-bindgen v0.2.114/Build/TargetInner { ..: custom_build_target("build-script-build", "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\wasm-bindgen-0.2.114\\build.rs", Edition2021) }
+   0.346312400s  INFO prepare_target{force=false package_id=wasm-bindgen v0.2.114 target="build-script-build"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\wasm-bindgen-1f24d4918d45f4ae\build-script-build-script-build`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: git_libgit2_prerelease
+  15: <unknown>
+  16: <unknown>
+  17: <unknown>
+  18: <unknown>
+  19: git_midx_writer_dump
+  20: git_filter_source_repo
+  21: git_midx_writer_dump
+  22: BaseThreadInitThunk
+  23: RtlUserThreadStart
+   0.382441200s  INFO prepare_target{force=false package_id=rustversion v1.0.22 target="rustversion"}: cargo::core::compiler::fingerprint: fingerprint error for rustversion v1.0.22/Build/TargetInner { for_host: true, proc_macro: true, ..: lib_target("rustversion", ["proc-macro"], "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\rustversion-1.0.22\\src\\lib.rs", Edition2018) }
+   0.382488500s  INFO prepare_target{force=false package_id=rustversion v1.0.22 target="rustversion"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\rustversion-5a54f76321baf9b2\lib-rustversion`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: git_filter_source_repo
+  15: git_libgit2_prerelease
+  16: <unknown>
+  17: <unknown>
+  18: <unknown>
+  19: <unknown>
+  20: git_midx_writer_dump
+  21: git_filter_source_repo
+  22: git_midx_writer_dump
+  23: BaseThreadInitThunk
+  24: RtlUserThreadStart
+   0.404348800s  INFO prepare_target{force=false package_id=rustversion v1.0.22 target="build-script-build"}: cargo::core::compiler::fingerprint: fingerprint error for rustversion v1.0.22/RunCustomBuild/TargetInner { ..: custom_build_target("build-script-build", "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\rustversion-1.0.22\\build\\build.rs", Edition2018) }
+   0.404409300s  INFO prepare_target{force=false package_id=rustversion v1.0.22 target="build-script-build"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\rustversion-882dbf78ca7ba90a\run-build-script-build-script-build`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: git_filter_source_repo
+  15: git_filter_source_repo
+  16: git_filter_source_repo
+  17: git_libgit2_prerelease
+  18: <unknown>
+  19: <unknown>
+  20: <unknown>
+  21: <unknown>
+  22: git_midx_writer_dump
+  23: git_filter_source_repo
+  24: git_midx_writer_dump
+  25: BaseThreadInitThunk
+  26: RtlUserThreadStart
+   0.422360000s  INFO prepare_target{force=false package_id=rustversion v1.0.22 target="build-script-build"}: cargo::core::compiler::fingerprint: fingerprint error for rustversion v1.0.22/Build/TargetInner { ..: custom_build_target("build-script-build", "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\rustversion-1.0.22\\build\\build.rs", Edition2018) }
+   0.422394400s  INFO prepare_target{force=false package_id=rustversion v1.0.22 target="build-script-build"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\rustversion-060bb69dfa1c987d\build-script-build-script-build`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: git_filter_source_repo
+  15: git_filter_source_repo
+  16: git_filter_source_repo
+  17: git_libgit2_prerelease
+  18: <unknown>
+  19: <unknown>
+  20: <unknown>
+  21: <unknown>
+  22: git_midx_writer_dump
+  23: git_filter_source_repo
+  24: git_midx_writer_dump
+  25: BaseThreadInitThunk
+  26: RtlUserThreadStart
+   0.460185100s  INFO prepare_target{force=false package_id=wasm-bindgen-shared v0.2.114 target="build-script-build"}: cargo::core::compiler::fingerprint: fingerprint error for wasm-bindgen-shared v0.2.114/RunCustomBuild/TargetInner { ..: custom_build_target("build-script-build", "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\wasm-bindgen-shared-0.2.114\\build.rs", Edition2021) }
+   0.460232500s  INFO prepare_target{force=false package_id=wasm-bindgen-shared v0.2.114 target="build-script-build"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\wasm-bindgen-shared-7c95c8b31a38b3dd\run-build-script-build-script-build`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: git_filter_source_repo
+  15: git_libgit2_prerelease
+  16: <unknown>
+  17: <unknown>
+  18: <unknown>
+  19: <unknown>
+  20: git_midx_writer_dump
+  21: git_filter_source_repo
+  22: git_midx_writer_dump
+  23: BaseThreadInitThunk
+  24: RtlUserThreadStart
+   0.462436700s  INFO prepare_target{force=false package_id=wasm-bindgen-shared v0.2.114 target="build-script-build"}: cargo::core::compiler::fingerprint: fingerprint error for wasm-bindgen-shared v0.2.114/Build/TargetInner { ..: custom_build_target("build-script-build", "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\wasm-bindgen-shared-0.2.114\\build.rs", Edition2021) }
+   0.462464300s  INFO prepare_target{force=false package_id=wasm-bindgen-shared v0.2.114 target="build-script-build"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\wasm-bindgen-shared-5aa02b402b7d8dda\build-script-build-script-build`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: git_filter_source_repo
+  15: git_libgit2_prerelease
+  16: <unknown>
+  17: <unknown>
+  18: <unknown>
+  19: <unknown>
+  20: git_midx_writer_dump
+  21: git_filter_source_repo
+  22: git_midx_writer_dump
+  23: BaseThreadInitThunk
+  24: RtlUserThreadStart
+   0.463257100s  INFO prepare_target{force=false package_id=wasm-bindgen-macro v0.2.114 target="wasm_bindgen_macro"}: cargo::core::compiler::fingerprint: fingerprint error for wasm-bindgen-macro v0.2.114/Build/TargetInner { for_host: true, proc_macro: true, ..: lib_target("wasm_bindgen_macro", ["proc-macro"], "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\wasm-bindgen-macro-0.2.114\\src\\lib.rs", Edition2021) }
+   0.463278400s  INFO prepare_target{force=false package_id=wasm-bindgen-macro v0.2.114 target="wasm_bindgen_macro"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\wasm-bindgen-macro-58952e02660d33df\lib-wasm_bindgen_macro`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_libgit2_prerelease
+  14: <unknown>
+  15: <unknown>
+  16: <unknown>
+  17: <unknown>
+  18: git_midx_writer_dump
+  19: git_filter_source_repo
+  20: git_midx_writer_dump
+  21: BaseThreadInitThunk
+  22: RtlUserThreadStart
+   0.464063100s  INFO prepare_target{force=false package_id=quote v1.0.45 target="quote"}: cargo::core::compiler::fingerprint: fingerprint error for quote v1.0.45/Build/TargetInner { ..: lib_target("quote", ["lib"], "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\quote-1.0.45\\src\\lib.rs", Edition2021) }
+   0.464082700s  INFO prepare_target{force=false package_id=quote v1.0.45 target="quote"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\quote-6c6734f92489062c\lib-quote`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: git_libgit2_prerelease
+  15: <unknown>
+  16: <unknown>
+  17: <unknown>
+  18: <unknown>
+  19: git_midx_writer_dump
+  20: git_filter_source_repo
+  21: git_midx_writer_dump
+  22: BaseThreadInitThunk
+  23: RtlUserThreadStart
+   0.466868200s  INFO prepare_target{force=false package_id=proc-macro2 v1.0.106 target="proc_macro2"}: cargo::core::compiler::fingerprint: fingerprint error for proc-macro2 v1.0.106/Build/TargetInner { ..: lib_target("proc_macro2", ["lib"], "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\proc-macro2-1.0.106\\src\\lib.rs", Edition2021) }
+   0.466882000s  INFO prepare_target{force=false package_id=proc-macro2 v1.0.106 target="proc_macro2"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\proc-macro2-ab9656a159dbbfb6\lib-proc_macro2`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: git_filter_source_repo
+  15: git_libgit2_prerelease
+  16: <unknown>
+  17: <unknown>
+  18: <unknown>
+  19: <unknown>
+  20: git_midx_writer_dump
+  21: git_filter_source_repo
+  22: git_midx_writer_dump
+  23: BaseThreadInitThunk
+  24: RtlUserThreadStart
+   0.527287500s  INFO prepare_target{force=false package_id=proc-macro2 v1.0.106 target="build-script-build"}: cargo::core::compiler::fingerprint: fingerprint error for proc-macro2 v1.0.106/RunCustomBuild/TargetInner { ..: custom_build_target("build-script-build", "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\proc-macro2-1.0.106\\build.rs", Edition2021) }
+   0.527314400s  INFO prepare_target{force=false package_id=proc-macro2 v1.0.106 target="build-script-build"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\proc-macro2-e8d2bd04e12f51a1\run-build-script-build-script-build`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: git_filter_source_repo
+  15: git_filter_source_repo
+  16: git_filter_source_repo
+  17: git_libgit2_prerelease
+  18: <unknown>
+  19: <unknown>
+  20: <unknown>
+  21: <unknown>
+  22: git_midx_writer_dump
+  23: git_filter_source_repo
+  24: git_midx_writer_dump
+  25: BaseThreadInitThunk
+  26: RtlUserThreadStart
+   0.528397900s  INFO prepare_target{force=false package_id=proc-macro2 v1.0.106 target="build-script-build"}: cargo::core::compiler::fingerprint: fingerprint error for proc-macro2 v1.0.106/Build/TargetInner { ..: custom_build_target("build-script-build", "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\proc-macro2-1.0.106\\build.rs", Edition2021) }
+   0.528419100s  INFO prepare_target{force=false package_id=proc-macro2 v1.0.106 target="build-script-build"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\proc-macro2-9140ae78e5aa91e0\build-script-build-script-build`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: git_filter_source_repo
+  15: git_filter_source_repo
+  16: git_filter_source_repo
+  17: git_libgit2_prerelease
+  18: <unknown>
+  19: <unknown>
+  20: <unknown>
+  21: <unknown>
+  22: git_midx_writer_dump
+  23: git_filter_source_repo
+  24: git_midx_writer_dump
+  25: BaseThreadInitThunk
+  26: RtlUserThreadStart
+   0.529784000s  INFO prepare_target{force=false package_id=unicode-ident v1.0.24 target="unicode_ident"}: cargo::core::compiler::fingerprint: fingerprint error for unicode-ident v1.0.24/Build/TargetInner { ..: lib_target("unicode_ident", ["lib"], "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\unicode-ident-1.0.24\\src\\lib.rs", Edition2021) }
+   0.529798800s  INFO prepare_target{force=false package_id=unicode-ident v1.0.24 target="unicode_ident"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\unicode-ident-aee44922ab25625e\lib-unicode_ident`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: git_filter_source_repo
+  15: git_filter_source_repo
+  16: git_libgit2_prerelease
+  17: <unknown>
+  18: <unknown>
+  19: <unknown>
+  20: <unknown>
+  21: git_midx_writer_dump
+  22: git_filter_source_repo
+  23: git_midx_writer_dump
+  24: BaseThreadInitThunk
+  25: RtlUserThreadStart
+   0.532341300s  INFO prepare_target{force=false package_id=quote v1.0.45 target="build-script-build"}: cargo::core::compiler::fingerprint: fingerprint error for quote v1.0.45/RunCustomBuild/TargetInner { ..: custom_build_target("build-script-build", "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\quote-1.0.45\\build.rs", Edition2021) }
+   0.532353000s  INFO prepare_target{force=false package_id=quote v1.0.45 target="build-script-build"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\quote-13bc1ff4de59624a\run-build-script-build-script-build`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: git_filter_source_repo
+  15: git_filter_source_repo
+  16: git_libgit2_prerelease
+  17: <unknown>
+  18: <unknown>
+  19: <unknown>
+  20: <unknown>
+  21: git_midx_writer_dump
+  22: git_filter_source_repo
+  23: git_midx_writer_dump
+  24: BaseThreadInitThunk
+  25: RtlUserThreadStart
+   0.532832100s  INFO prepare_target{force=false package_id=quote v1.0.45 target="build-script-build"}: cargo::core::compiler::fingerprint: fingerprint error for quote v1.0.45/Build/TargetInner { ..: custom_build_target("build-script-build", "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\quote-1.0.45\\build.rs", Edition2021) }
+   0.532845600s  INFO prepare_target{force=false package_id=quote v1.0.45 target="build-script-build"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\quote-435fa7b2c1d63305\build-script-build-script-build`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: git_filter_source_repo
+  15: git_filter_source_repo
+  16: git_libgit2_prerelease
+  17: <unknown>
+  18: <unknown>
+  19: <unknown>
+  20: <unknown>
+  21: git_midx_writer_dump
+  22: git_filter_source_repo
+  23: git_midx_writer_dump
+  24: BaseThreadInitThunk
+  25: RtlUserThreadStart
+   0.533710700s  INFO prepare_target{force=false package_id=wasm-bindgen-macro-support v0.2.114 target="wasm_bindgen_macro_support"}: cargo::core::compiler::fingerprint: fingerprint error for wasm-bindgen-macro-support v0.2.114/Build/TargetInner { ..: lib_target("wasm_bindgen_macro_support", ["lib"], "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\wasm-bindgen-macro-support-0.2.114\\src\\lib.rs", Edition2021) }
+   0.533722000s  INFO prepare_target{force=false package_id=wasm-bindgen-macro-support v0.2.114 target="wasm_bindgen_macro_support"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\wasm-bindgen-macro-support-88e5ca8dfd2a0a7a\lib-wasm_bindgen_macro_support`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: git_libgit2_prerelease
+  15: <unknown>
+  16: <unknown>
+  17: <unknown>
+  18: <unknown>
+  19: git_midx_writer_dump
+  20: git_filter_source_repo
+  21: git_midx_writer_dump
+  22: BaseThreadInitThunk
+  23: RtlUserThreadStart
+   0.534296200s  INFO prepare_target{force=false package_id=bumpalo v3.20.2 target="bumpalo"}: cargo::core::compiler::fingerprint: fingerprint error for bumpalo v3.20.2/Build/TargetInner { benched: false, ..: lib_target("bumpalo", ["lib"], "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\bumpalo-3.20.2\\src\\lib.rs", Edition2021) }
+   0.534309400s  INFO prepare_target{force=false package_id=bumpalo v3.20.2 target="bumpalo"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\bumpalo-33cf78a47eed6fb4\lib-bumpalo`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: git_filter_source_repo
+  15: git_libgit2_prerelease
+  16: <unknown>
+  17: <unknown>
+  18: <unknown>
+  19: <unknown>
+  20: git_midx_writer_dump
+  21: git_filter_source_repo
+  22: git_midx_writer_dump
+  23: BaseThreadInitThunk
+  24: RtlUserThreadStart
+   0.535224000s  INFO prepare_target{force=false package_id=syn v2.0.117 target="syn"}: cargo::core::compiler::fingerprint: fingerprint error for syn v2.0.117/Build/TargetInner { ..: lib_target("syn", ["lib"], "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\syn-2.0.117\\src\\lib.rs", Edition2021) }
+   0.535234800s  INFO prepare_target{force=false package_id=syn v2.0.117 target="syn"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\syn-ce79eb5dc3001edf\lib-syn`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: git_filter_source_repo
+  15: git_libgit2_prerelease
+  16: <unknown>
+  17: <unknown>
+  18: <unknown>
+  19: <unknown>
+  20: git_midx_writer_dump
+  21: git_filter_source_repo
+  22: git_midx_writer_dump
+  23: BaseThreadInitThunk
+  24: RtlUserThreadStart
+   0.536141000s  INFO prepare_target{force=false package_id=wasm-bindgen-shared v0.2.114 target="wasm_bindgen_shared"}: cargo::core::compiler::fingerprint: fingerprint error for wasm-bindgen-shared v0.2.114/Build/TargetInner { ..: lib_target("wasm_bindgen_shared", ["lib"], "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\wasm-bindgen-shared-0.2.114\\src\\lib.rs", Edition2021) }
+   0.536153300s  INFO prepare_target{force=false package_id=wasm-bindgen-shared v0.2.114 target="wasm_bindgen_shared"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\wasm-bindgen-shared-aa33e8407e866b8d\lib-wasm_bindgen_shared`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: git_filter_source_repo
+  15: git_libgit2_prerelease
+  16: <unknown>
+  17: <unknown>
+  18: <unknown>
+  19: <unknown>
+  20: git_midx_writer_dump
+  21: git_filter_source_repo
+  22: git_midx_writer_dump
+  23: BaseThreadInitThunk
+  24: RtlUserThreadStart
+   0.536716200s  INFO prepare_target{force=false package_id=wasm-bindgen-shared v0.2.114 target="wasm_bindgen_shared"}: cargo::core::compiler::fingerprint: fingerprint error for wasm-bindgen-shared v0.2.114/Check { test: false }/TargetInner { ..: lib_target("wasm_bindgen_shared", ["lib"], "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\wasm-bindgen-shared-0.2.114\\src\\lib.rs", Edition2021) }
+   0.536728000s  INFO prepare_target{force=false package_id=wasm-bindgen-shared v0.2.114 target="wasm_bindgen_shared"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\wasm-bindgen-shared-5b94bf091ad8e01b\lib-wasm_bindgen_shared`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_libgit2_prerelease
+  14: <unknown>
+  15: <unknown>
+  16: <unknown>
+  17: <unknown>
+  18: git_midx_writer_dump
+  19: git_filter_source_repo
+  20: git_midx_writer_dump
+  21: BaseThreadInitThunk
+  22: RtlUserThreadStart
+   0.537626800s  INFO prepare_target{force=false package_id=unicode-ident v1.0.24 target="unicode_ident"}: cargo::core::compiler::fingerprint: fingerprint error for unicode-ident v1.0.24/Check { test: false }/TargetInner { ..: lib_target("unicode_ident", ["lib"], "C:\\Users\\12404183\\.cargo\\registry\\src\\index.crates.io-1949cf8c6b5b557f\\unicode-ident-1.0.24\\src\\lib.rs", Edition2021) }
+   0.537638300s  INFO prepare_target{force=false package_id=unicode-ident v1.0.24 target="unicode_ident"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\unicode-ident-f52b723eadefb8a9\lib-unicode_ident`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_filter_source_repo
+  12: git_filter_source_repo
+  13: git_filter_source_repo
+  14: git_libgit2_prerelease
+  15: <unknown>
+  16: <unknown>
+  17: <unknown>
+  18: <unknown>
+  19: git_midx_writer_dump
+  20: git_filter_source_repo
+  21: git_midx_writer_dump
+  22: BaseThreadInitThunk
+  23: RtlUserThreadStart
+   0.538610600s  INFO prepare_target{force=false package_id=physics v0.1.0 (E:\MMI\Semestre 4\SAE402\SAE_402\physics) target="physics"}: cargo::core::compiler::fingerprint: fingerprint error for physics v0.1.0 (E:\MMI\Semestre 4\SAE402\SAE_402\physics)/Check { test: true }/TargetInner { name_inferred: true, ..: lib_target("physics", ["cdylib"], "E:\\MMI\\Semestre 4\\SAE402\\SAE_402\\physics\\src\\lib.rs", Edition2021) }
+   0.538622100s  INFO prepare_target{force=false package_id=physics v0.1.0 (E:\MMI\Semestre 4\SAE402\SAE_402\physics) target="physics"}: cargo::core::compiler::fingerprint:     err: failed to read `E:\MMI\Semestre 4\SAE402\SAE_402\physics\target\debug\.fingerprint\physics-5faf2f055df08b88\test-lib-physics`
+
+Caused by:
+    Le fichier spécifié est introuvable. (os error 2)
+
+Stack backtrace:
+   0: git_midx_writer_dump
+   1: git_midx_writer_dump
+   2: git_midx_writer_dump
+   3: git_midx_writer_dump
+   4: git_filter_source_repo
+   5: git_filter_source_repo
+   6: git_filter_source_repo
+   7: git_filter_source_repo
+   8: git_filter_source_repo
+   9: git_filter_source_repo
+  10: git_filter_source_repo
+  11: git_libgit2_prerelease
+  12: <unknown>
+  13: <unknown>
+  14: <unknown>
+  15: <unknown>
+  16: git_midx_writer_dump
+  17: git_filter_source_repo
+  18: git_midx_writer_dump
+  19: BaseThreadInitThunk
+  20: RtlUserThreadStart
+   Compiling wasm-bindgen-shared v0.2.114
+   Compiling proc-macro2 v1.0.106
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.45
+   Compiling rustversion v1.0.22
+   Compiling bumpalo v3.20.2
+    Checking cfg-if v1.0.4
+    Checking once_cell v1.21.4
+   Compiling syn v2.0.117
+   Compiling wasm-bindgen v0.2.114
+   Compiling wasm-bindgen-macro-support v0.2.114
+   Compiling wasm-bindgen-macro v0.2.114
+    Checking physics v0.1.0 (E:\MMI\Semestre 4\SAE402\SAE_402\physics)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 11.48s
