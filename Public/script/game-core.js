@@ -1,6 +1,6 @@
 const DEFAULT_CONFIG = {
   wasmImportPath: '/wasm.js',
-  spritePath: './assets/sprites/rats/rat_cours.png',
+  spritePath: null,
   canvasIds: ['game', 'ecranDeJeu'],
   gravity: 1980.0,
   floorY: 580.0,
@@ -8,6 +8,20 @@ const DEFAULT_CONFIG = {
   playerHeight: 50,
   moveSpeed: 220,
   jumpSpeed: 450,
+  maxPlayers: 4,
+  spawnStartX: 120,
+  spawnGapX: 120,
+  spawnY: 120,
+  sendRateHz: 30,
+  renderSmoothing: 18,
+  localRenderSmoothing: 28,
+  localLeadSeconds: 0.06,
+  socketOptions: {
+    transports: ['websocket', 'polling'],
+    reconnection: true,
+    reconnectionDelay: 300,
+    timeout: 10000,
+  },
   platforms: [
     { x: 100, y: 420, w: 220, h: 15 },
     { x: 420, y: 300, w: 240, h: 15 },
@@ -23,19 +37,18 @@ function findCanvas(canvasIds) {
   return null;
 }
 
-function localInputFor(keys, playerIndex) {
-  if (playerIndex === 0) {
-    return {
-      left: !!keys.ArrowLeft,
-      right: !!keys.ArrowRight,
-      jump: !!keys.ArrowUp,
-    };
-  }
-
+function spawnForIndex(config, index) {
   return {
-    left: !!keys.KeyQ,
-    right: !!keys.KeyD,
-    jump: !!keys.KeyZ,
+    x: config.spawnStartX + index * config.spawnGapX,
+    y: config.spawnY,
+  };
+}
+
+function localInputFor(keys) {
+  return {
+    left: !!keys.ArrowLeft || !!keys.KeyQ || !!keys.KeyA,
+    right: !!keys.ArrowRight || !!keys.KeyD,
+    jump: !!keys.ArrowUp || !!keys.KeyZ || !!keys.KeyW || !!keys.Space,
   };
 }
 
@@ -45,31 +58,75 @@ function vxFromInput(input, moveSpeed) {
   return 0;
 }
 
+function smoothToward(current, target, dt, smoothingHz) {
+  const t = 1 - Math.exp(-Math.max(0, smoothingHz) * Math.max(0, dt));
+  return current + (target - current) * t;
+}
+
+function ensureArrayLength(arr, len, factory) {
+  const out = arr.slice(0, len);
+  while (out.length < len) out.push(factory(out.length));
+  return out;
+}
+
 export async function startGame(userConfig = {}) {
   const config = { ...DEFAULT_CONFIG, ...userConfig };
 
   const canvas = findCanvas(config.canvasIds);
-  if (!canvas) {
-    throw new Error('Canvas introuvable.');
-  }
+  if (!canvas) throw new Error('Canvas introuvable.');
   const ctx = canvas.getContext('2d');
 
-  const socket = window.io ? window.io() : null;
-  const { initPhysics } = await import(config.wasmImportPath);
+  const socket = window.io ? window.io(config.socketOptions) : null;
 
   const keys = {};
   window.addEventListener('keydown', (e) => { keys[e.code] = true; });
   window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
-  const netInputs = [
-    { left: false, right: false, jump: false },
-    { left: false, right: false, jump: false },
-  ];
-  const jumpLatch = [false, false];
-
-  let myPlayerIndex = -1;
-  let lastSent = '';
+  let maxPlayers = config.maxPlayers;
+  let myPlayerIndex = 0;
   let socketReady = false;
+  let assigned = false;
+
+  let connectedPlayers = Array(maxPlayers).fill(false);
+  connectedPlayers[0] = true;
+
+  let remotePlayers = Array.from({ length: maxPlayers }, (_, i) => {
+    const s = spawnForIndex(config, i);
+    return {
+      x: s.x,
+      y: s.y,
+      renderX: s.x,
+      renderY: s.y,
+      connected: false,
+    };
+  });
+
+  let assignedSpawn = spawnForIndex(config, 0);
+
+  function resizeNetworkArrays(nextMax) {
+    maxPlayers = nextMax;
+    connectedPlayers = ensureArrayLength(connectedPlayers, maxPlayers, () => false);
+
+    remotePlayers = ensureArrayLength(
+      remotePlayers,
+      maxPlayers,
+      (i) => {
+        const s = spawnForIndex(config, i);
+        return {
+          x: s.x,
+          y: s.y,
+          renderX: s.x,
+          renderY: s.y,
+          connected: false,
+        };
+      }
+    );
+  }
+
+  let resolveAssignment = null;
+  const assignmentPromise = new Promise((resolve) => {
+    resolveAssignment = resolve;
+  });
 
   if (socket) {
     socket.on('connect', () => {
@@ -78,83 +135,132 @@ export async function startGame(userConfig = {}) {
 
     socket.on('disconnect', () => {
       socketReady = false;
-      myPlayerIndex = -1;
     });
 
-    socket.on('assign_player', ({ playerIndex }) => {
-      myPlayerIndex = playerIndex;
-      console.log('Tu es le joueur', playerIndex);
+    socket.on('connect_error', (err) => {
+      console.warn('Socket connect_error:', err && err.message ? err.message : err);
     });
 
-    socket.on('input', ({ playerIndex, left, right, jump }) => {
-      if (playerIndex < 0 || playerIndex > 1) return;
-      netInputs[playerIndex] = { left: !!left, right: !!right, jump: !!jump };
+    socket.on('assign_player', ({ playerIndex, maxPlayers: mp, spawn }) => {
+      if (Number.isInteger(mp) && mp > 0 && mp !== maxPlayers) {
+        resizeNetworkArrays(mp);
+      }
+
+      if (Number.isInteger(playerIndex) && playerIndex >= 0 && playerIndex < maxPlayers) {
+        myPlayerIndex = playerIndex;
+      }
+
+      if (spawn && Number.isFinite(spawn.x) && Number.isFinite(spawn.y)) {
+        assignedSpawn = { x: spawn.x, y: spawn.y };
+      } else {
+        assignedSpawn = spawnForIndex(config, myPlayerIndex);
+      }
+
+      connectedPlayers[myPlayerIndex] = true;
+      remotePlayers[myPlayerIndex].connected = true;
+      remotePlayers[myPlayerIndex].x = assignedSpawn.x;
+      remotePlayers[myPlayerIndex].y = assignedSpawn.y;
+      remotePlayers[myPlayerIndex].renderX = assignedSpawn.x;
+      remotePlayers[myPlayerIndex].renderY = assignedSpawn.y;
+      assigned = true;
+      console.log('Tu es le joueur', myPlayerIndex);
+
+      if (resolveAssignment) {
+        resolveAssignment();
+        resolveAssignment = null;
+      }
+    });
+
+    socket.on('players_state', ({ connected }) => {
+      if (!Array.isArray(connected)) return;
+      connectedPlayers = connected.slice(0, maxPlayers);
+      while (connectedPlayers.length < maxPlayers) connectedPlayers.push(false);
     });
 
     socket.on('player_left', ({ playerIndex }) => {
-      if (playerIndex < 0 || playerIndex > 1) return;
-      netInputs[playerIndex] = { left: false, right: false, jump: false };
+      if (!Number.isInteger(playerIndex)) return;
+      if (playerIndex < 0 || playerIndex >= maxPlayers) return;
+      connectedPlayers[playerIndex] = false;
+      remotePlayers[playerIndex].connected = false;
     });
 
-    socket.on('room_full', () => {
-      alert('Salle pleine (2 joueurs max).');
+    socket.on('state_snapshot', (snap) => {
+      if (!snap || !Array.isArray(snap.players)) return;
+
+      const snapPlayers = snap.players.slice(0, maxPlayers);
+
+      for (let i = 0; i < snapPlayers.length; i += 1) {
+        const p = snapPlayers[i];
+        if (!p) continue;
+
+        if (!p.connected) {
+          connectedPlayers[i] = false;
+          remotePlayers[i].connected = false;
+          continue;
+        }
+
+        if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
+
+        connectedPlayers[i] = true;
+        remotePlayers[i].connected = true;
+        remotePlayers[i].x = p.x;
+        remotePlayers[i].y = p.y;
+      }
     });
+  }
+
+  // On attend un peu lassignation serveur avant de creer le joueur local
+  await Promise.race([
+    assignmentPromise,
+    new Promise((resolve) => setTimeout(resolve, 1200)),
+  ]);
+
+  if (!assigned) {
+    myPlayerIndex = 0;
+    connectedPlayers[0] = true;
+    assignedSpawn = spawnForIndex(config, 0);
+    remotePlayers[0].connected = true;
+    remotePlayers[0].x = assignedSpawn.x;
+    remotePlayers[0].y = assignedSpawn.y;
+    remotePlayers[0].renderX = assignedSpawn.x;
+    remotePlayers[0].renderY = assignedSpawn.y;
+    console.warn('Aucune assignation recue, fallback local active.');
   }
 
   const spriteRat = new Image();
-  spriteRat.src = config.spritePath;
+  if (config.spritePath) spriteRat.src = config.spritePath;
 
-  const world = await initPhysics(config.gravity, config.floorY);
-
-  for (const p of config.platforms) {
-    world.add_platform(p.x, p.y, p.w, p.h);
-  }
-
-  const p0 = world.add_player(180, 120, config.playerWidth, config.playerHeight);
-  const p1 = world.add_player(280, 120, config.playerWidth, config.playerHeight);
-  const players = [p0, p1];
-
-  const FIXED_DT = 1 / 60;
   let lastTime = performance.now();
-  let accumulator = 0;
+
+  let sendAccumulator = 0;
+  const sendInterval = 1 / Math.max(1, config.sendRateHz);
+
+  function drawPlayerAt(x, y, color) {
+    if (config.spritePath && spriteRat.complete && spriteRat.naturalWidth > 0) {
+      ctx.drawImage(spriteRat, x, y, config.playerWidth, config.playerHeight);
+    } else {
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, config.playerWidth, config.playerHeight);
+    }
+  }
 
   function loop(now) {
     const frameDt = Math.min((now - lastTime) / 1000, 0.1);
     lastTime = now;
-    accumulator += frameDt;
+    sendAccumulator += frameDt;
 
-    const networkMode = !!socket && socketReady && myPlayerIndex !== -1;
+    const input = localInputFor(keys);
 
-    if (networkMode) {
-      const local = localInputFor(keys, myPlayerIndex);
-      const signature = `${local.left}-${local.right}-${local.jump}`;
-      if (signature !== lastSent) {
-        socket.emit('input', local);
-        lastSent = signature;
-      }
-      netInputs[myPlayerIndex] = local;
-    } else {
-      // Fallback local: evite un jeu "fige" si Socket.IO est charge
-      // mais qu'aucune assignation reseau n'a encore eu lieu.
-      netInputs[0] = localInputFor(keys, 0);
-      netInputs[1] = localInputFor(keys, 1);
+    if (socket && socketReady && sendAccumulator >= sendInterval) {
+      sendAccumulator = 0;
+      socket.emit('player_input', {
+        left: input.left,
+        right: input.right,
+        jump: input.jump,
+      });
     }
 
-    for (let i = 0; i < players.length; i += 1) {
-      const input = netInputs[i];
-      world.set_player_vx(players[i], vxFromInput(input, config.moveSpeed));
-
-      if (input.jump && !jumpLatch[i]) {
-        world.player_jump(players[i], config.jumpSpeed);
-      }
-      jumpLatch[i] = input.jump;
-    }
-
-    while (accumulator >= FIXED_DT) {
-      world.step(FIXED_DT);
-      accumulator -= FIXED_DT;
-    }
-
+    // Rendue
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     for (const p of config.platforms) {
@@ -162,24 +268,38 @@ export async function startGame(userConfig = {}) {
       ctx.fillRect(p.x, p.y, p.w, p.h);
     }
 
-    const drawPlayer = (id, fallbackColor) => {
-      const x = world.get_player_x(id);
-      const y = world.get_player_y(id);
+    // Tous les joueurs (etat autoritaire serveur)
+    for (let i = 0; i < maxPlayers; i += 1) {
+      if (!connectedPlayers[i]) continue;
+      if (!remotePlayers[i].connected) continue;
 
-      if (spriteRat.complete && spriteRat.naturalWidth > 0) {
-        ctx.drawImage(spriteRat, x, y, config.playerWidth, config.playerHeight);
-      } else {
-        ctx.fillStyle = fallbackColor;
-        ctx.fillRect(x, y, config.playerWidth, config.playerHeight);
-      }
-    };
+      const isLocal = i === myPlayerIndex;
+      const targetX = isLocal
+        ? remotePlayers[i].x + vxFromInput(input, config.moveSpeed) * config.localLeadSeconds
+        : remotePlayers[i].x;
+      const targetY = remotePlayers[i].y;
+      const smoothing = isLocal ? config.localRenderSmoothing : config.renderSmoothing;
 
-    drawPlayer(p0, '#e74c3c');
-    drawPlayer(p1, '#3498db');
+      remotePlayers[i].renderX = smoothToward(remotePlayers[i].renderX, targetX, frameDt, smoothing);
+      remotePlayers[i].renderY = smoothToward(remotePlayers[i].renderY, targetY, frameDt, smoothing);
 
+      drawPlayerAt(
+        remotePlayers[i].renderX,
+        remotePlayers[i].renderY,
+        isLocal ? '#2ecc71' : '#3498db'
+      );
+    }
+
+    // HUD
+    const connectedCount = connectedPlayers.filter(Boolean).length;
     ctx.fillStyle = 'white';
     ctx.font = '14px Arial';
-    ctx.fillText('J0: Fleches | J1: Q/D/Z', 12, 20);
+    ctx.fillText(
+      'Moi: ' + myPlayerIndex + ' | Connectes: ' + connectedCount + '/' + maxPlayers +
+      ' | Socket: ' + (socketReady ? 'OK' : 'OFF'),
+      12,
+      20
+    );
 
     requestAnimationFrame(loop);
   }

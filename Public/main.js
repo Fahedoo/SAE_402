@@ -2,9 +2,10 @@ import { startGame } from './script/game-core.js';
 
 startGame({
   wasmImportPath: '/wasm.js',
-  spritePath: './assets/sprites/rats/rat_cours.png',
+  spritePath: null,
   canvasIds: ['game', 'ecranDeJeu'],
   floorY: 580.0,
+  maxPlayers: 4,
   platforms: [
     { x: 100, y: 420, w: 220, h: 15 },
     { x: 420, y: 300, w: 240, h: 15 },
