@@ -132,9 +132,17 @@ impl World {
         }
     }
 
-    pub fn get_player_x(&self, id: usize) -> f32 { self.players[id].x }
-    pub fn get_player_y(&self, id: usize) -> f32 { self.players[id].y }
-    pub fn get_player_on_ground(&self, id: usize) -> bool { self.players[id].on_ground }
+pub fn get_player_x(&self, id: usize) -> f32 {
+    self.players.get(id).map_or(0.0, |p| p.x)
+}
+
+pub fn get_player_y(&self, id: usize) -> f32 {
+    self.players.get(id).map_or(0.0, |p| p.y)
+}
+
+pub fn get_player_on_ground(&self, id: usize) -> bool {
+    self.players.get(id).map_or(false, |p| p.on_ground)
+}
     pub fn player_count(&self) -> usize { self.players.len() }
 
     pub fn step(&mut self, dt: f32) {
