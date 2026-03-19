@@ -83,14 +83,12 @@
             <canvas id="gameCanvas"></canvas>
         </section>
         
-        <section id="screen-result" class="screen">
-            <h2 class="retro-title" id="result-title">FIN DU SERVICE</h2>
-            <div class="menu-box">
-                <p class="label">SCORE FINAL :</p>
-                <h3 id="final-score" style="font-size: 2rem; color: #00FF41; text-align: center; margin-bottom: 20px;">0</h3>
-                <button onclick="location.reload()">NOUVEAU SERVICE</button>
-            </div>
-        </section>
+        <div id="screen-result" class="screen">
+    <div class="result-container">
+        <h1 id="result-title">MODE COOP TERMINÉ</h1>
+        <button onclick="location.reload()" class="btn-retry">RETOUR AU MENU</button>
+    </div>
+</div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>

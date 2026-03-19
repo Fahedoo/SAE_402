@@ -67,7 +67,7 @@ export class GameRenderer {
             // ==========================================
             // --- CORRECTION : HAUTEUR DU SOMMET ---
             // ==========================================
-            { x: 300, y: 150,  w: 400, h: 15, slope: 0 }  // Index 9: Objectif (Chef + Fromage)
+            { x: 320, y: 150,  w: 400, h: 15, slope: 0 }  // Index 9: Objectif (Chef + Fromage)
         ];
 
         // --- UN RÉSEAU D'ÉCHELLES STRATÉGIQUE ---
@@ -279,8 +279,8 @@ export class GameRenderer {
        // --- DESSIN DES LEVIERS ---
         this.levers.forEach(lev => {
             const img = lev.active ? this.imgLeverOn : this.imgLeverOff;
-            const lw = 100; 
-            const lh = 100; 
+            const lw = 40; 
+            const lh = 40; 
 
             // Si l'image est bien chargée, on la dessine
             if (img.complete && img.naturalWidth > 0) {

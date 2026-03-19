@@ -106,8 +106,10 @@ let gameConfig = { nbPlayers: 2, modeAmi: true, isStarted: false };
 let tomatoes = [];
 let nextTomatoId = 1;
 
-
 setInterval(() => {
+    // 🛑 LE BOUCLIER ANTI-TOMATES : on bloque tout direct !
+    return; 
+
     if (!gameConfig.isStarted || Object.keys(players).length === 0) return;
     if (tomatoes.length >= 10) return; 
 
@@ -226,6 +228,12 @@ io.on('connection', (socket) => {
             else if (data.vx < 0) player.direction = -1;
         } else if (data.action === 'move_v') {
             player.vy_input = data.vy; 
+            
+            // 🌟 AJOUT : On prévient le moteur physique si le joueur veut descendre
+            if (world.set_player_dropping) {
+                world.set_player_dropping(wasmId, data.vy > 0);
+            }
+            
         } else if (data.action === 'jump') {
             world.player_jump(wasmId, 450); 
         }
@@ -250,6 +258,9 @@ io.on('connection', (socket) => {
     });
 });
 
+// ==========================================
+// --- LA BOUCLE PRINCIPALE DU JEU (60 FPS) ---
+// ==========================================
 setInterval(() => {
     if (!gameConfig.isStarted) return;
 
@@ -259,9 +270,13 @@ setInterval(() => {
         const px = world.get_player_x(wasmId);
         const py = world.get_player_y(wasmId);
         
+        // 🌟 LA CLÉ EST LÀ : On vérifie si le rat touche un sol solide !
+        const onGround = world.get_player_on_ground(wasmId); 
+        
+        // 1. Gestion des échelles
         player.isOverLadder = false;
         for(const lad of serverLadders) {
-            if (px + 15 > lad.x && px - 15 < lad.x + lad.w && py > lad.y_top - 30 && py < lad.y_bottom) {   
+            if (Math.abs(px - lad.x) <= 10 && py > lad.y_top - 30 && py < lad.y_bottom) {   
                 player.isOverLadder = true;
                 break;
             }
@@ -270,27 +285,71 @@ setInterval(() => {
         if (player.isOverLadder && world.set_player_vy) {
             world.set_player_vy(wasmId, player.vy_input);
         }
+
+        // 🌟 2. DÉTECTION DE LA VICTOIRE (Version corrigée)
+        // On enlève "onGround" car si le rat saute sur le fromage, ça doit compter aussi !
+        if (cheeseActive) { 
+            // On vérifie si le rat est dans la zone du fromage (Haut de l'écran entre X: 400 et 600)
+            if (px > 400 && px < 600 && py < 160) { 
+                console.log(`🏆 VICTOIRE ! ${player.pseudo} a touché le fromage !`);
+                
+                // 1. On prévient DIRECTEMENT les clients
+                io.emit('gameWon', player.pseudo); 
+
+                // 2. On coupe le moteur
+                gameConfig.isStarted = false; 
+                tomatoes = []; 
+                return; 
+            }
+        }
+    
     }
 
     world.step(1 / 60);
 
+    // 2. Gestion des Tomates
     if (tomatoes.length > 0) {
         for (let i = tomatoes.length - 1; i >= 0; i--) {
-            tomatoes[i].y += tomatoes[i].speed;
-            if (tomatoes[i].y >= 850) {
-                io.emit('removeTomato', tomatoes[i].id);
+            let tom = tomatoes[i];
+            tom.y += tom.speed;
+
+            // 🌟 NOUVEAU : DÉTECTION DE LA DÉFAITE (Collision Tomate / Rat)
+            let isHit = false;
+            for (let socketId in players) {
+                let p = players[socketId];
+                let pX = world.get_player_x(p.wasmId);
+                let pY = world.get_player_y(p.wasmId);
+
+                // Hitbox de collision (si le centre de la tomate est à moins de 30px du centre du rat)
+                if (Math.abs(tom.x - (pX + 15)) < 30 && Math.abs(tom.y - (pY + 15)) < 30) {
+                    console.log(`💥 K.O. ! ${p.pseudo} s'est pris une tomate !`);
+                    isHit = true;
+                    break;
+                }
+            }
+
+            if (isHit) {
+                gameConfig.isStarted = false; // On stoppe le moteur
+                tomatoes = []; 
+                io.emit('gameOver'); // On déclenche l'écran de défaite !
+                return; // Fin du bal
+            }
+
+            // Si la tomate touche le sol (850), on la supprime
+            if (tom.y >= 850) {
+                io.emit('removeTomato', tom.id);
                 tomatoes.splice(i, 1);
             }
         }
     }
 
+    // 3. Envoi de l'état du monde aux joueurs
     const stateToBroadcast = { players: {} };
 
     for (let socketId in players) {
         let wasmId = playerWasmIds[socketId];
         let player = players[socketId];
         
-        // ⚠️ NOUVEAU : Séparation précise de la course et de la grimpe
         let onGround = world.get_player_on_ground(wasmId);
         let isMovingAnimation = onGround && Math.abs(player.vx) > 0;
         let isClimbingAnimation = player.isOverLadder && (!onGround || Math.abs(player.vy_input) > 0);
@@ -303,7 +362,7 @@ setInterval(() => {
             color: player.color,
             direction: player.direction, 
             isMoving: isMovingAnimation,
-            isClimbing: isClimbingAnimation, // ⚠️ On envoie ça à Selma !
+            isClimbing: isClimbingAnimation,
             on_ground: onGround
         };
     }

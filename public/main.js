@@ -12,7 +12,6 @@ let isAdmin = false;
 
 let allPlayers = {}; 
 
-// 🌟 NOUVEAU : On stocke l'état du niveau ici en attendant que le jeu commence
 let currentLevers = [];
 let isCheeseActive = false;
 
@@ -21,12 +20,6 @@ const opt4 = document.getElementById('opt-4-players');
 const optAmi = document.getElementById('opt-mode-ami');
 const optEnnemi = document.getElementById('opt-mode-ennemi');
 const extraSlotsContainer = document.getElementById('extra-slots');
-
-function showScreen(screenId) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    const target = document.getElementById(screenId);
-    if (target) target.classList.add('active');
-}
 
 document.querySelectorAll('.color-opt').forEach(opt => {
     opt.addEventListener('click', () => {
@@ -109,26 +102,67 @@ document.getElementById('btn-start-service').addEventListener('click', () => {
 });
 
 socket.on('gameStarted', (config) => {
-    showScreen('screen-game');
-    initGameEngine();
+    if (config.modeAmi) {
+        showScreen('screen-game');
+        initGameEngine();
+    } else {
+        let blackScreen = document.getElementById('screen-black');
+        if (!blackScreen) {
+            blackScreen = document.createElement('div');
+            blackScreen.id = 'screen-black';
+            blackScreen.className = 'screen'; 
+            blackScreen.style.backgroundColor = 'black';
+            blackScreen.style.width = '100vw';
+            blackScreen.style.height = '100vh';
+            blackScreen.style.display = 'flex';
+            blackScreen.style.alignItems = 'center';
+            blackScreen.style.justifyContent = 'center';
+            blackScreen.innerHTML = '<h1 style="color: white; font-family: Arial;">Mode Ennemi - En cours de développement...</h1>';
+            document.body.appendChild(blackScreen);
+        }
+        showScreen('screen-black');
+    }
 });
 
 socket.on('worldState', (state) => {
     allPlayers = state.players; 
 });
 
-// 🌟 CORRECTION : On met à jour nos variables globales de sécurité
 socket.on('gameState', (data) => {
     currentLevers = data.levers;
     isCheeseActive = data.cheeseActive;
     
-    // Si le renderer existe déjà (en plein jeu), on le met à jour direct
     if (renderer) {
         renderer.levers = currentLevers;
         renderer.cheeseActive = isCheeseActive;
     }
 });
 
+// 🌟 GESTION DE LA VICTOIRE
+socket.on('gameWon', (heroName) => {
+    isPaused = true; 
+    
+    const resultTitle = document.getElementById('result-title');
+    if (resultTitle) {
+        resultTitle.innerHTML = `<span class='text-glow-green'>VICTOIRE DE ${heroName.toUpperCase()} !</span>`;
+    }
+    
+    // 🌟 C'est ICI qu'on utilise la fonction pour changer d'écran !
+    console.log("Tentative d'affichage victoire")
+    showScreen('screen-result'); 
+});
+
+socket.on('gameOver', () => {
+    isPaused = true; 
+    clearInterval(window.gameTimer); 
+    const resultTitle = document.getElementById('result-title');
+    if (resultTitle) {
+        resultTitle.innerHTML = "<span class='text-shake-red'>TOUT LE MONDE EST K.O. !</span><br><span style='font-size: 1.5rem; color: #888; display: inline-block; margin-top: 20px; text-shadow: none; animation: none;'>LE CHEF A GAGNÉ...</span>";
+    }
+    endGame(false);
+});
+
+// (L'unique et bon event de déconnexion)
 socket.on('playerDisconnected', (id) => { delete allPlayers[id]; });
 
 function initGameEngine() {
@@ -138,7 +172,6 @@ function initGameEngine() {
     if (!renderer) {
         renderer = new GameRenderer(canvas, selectedColor, socket); 
         
-        // 🌟 CORRECTION : On donne au renderer l'état du jeu qu'on avait reçu dans le lobby
         renderer.levers = currentLevers;
         renderer.cheeseActive = isCheeseActive;
 
@@ -163,18 +196,15 @@ function startTestTimer() {
             if(timerDisplay) timerDisplay.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
             if (timeLeft <= 0) {
                 clearInterval(window.gameTimer);
+                const resultTitle = document.getElementById('result-title');
+                if (resultTitle) resultTitle.innerHTML = "<span class='text-shake-red'>LE TEMPS EST ÉCOULÉ !</span><br><span style='font-size: 1.5rem; color: #888; display: inline-block; margin-top: 20px; text-shadow: none; animation: none;'>PAS DE FROMAGE CE SOIR...</span>";
                 endGame(false);
             }
         }
     }, 1000);
 }
-
+// 🌟 FONCTION ENDGAME AMÉLIORÉE
 function endGame(isVictory) {
-    const resultTitle = document.getElementById('result-title');
-    const finalScoreDisplay = document.getElementById('final-score');
-    const scoreEl = document.getElementById('score');
-    if(resultTitle) resultTitle.innerText = isVictory ? "MISSION RÉUSSIE !" : "BRIGADE VIRÉE !";
-    if(finalScoreDisplay) finalScoreDisplay.innerText = scoreEl ? scoreEl.innerText : "0";
     showScreen('screen-result');
 }
 
@@ -196,10 +226,25 @@ function togglePause() {
     }
 }
 
+function showScreen(screenId) {
+    // 1. On cache tous les écrans (en enlevant la classe .active)
+    document.querySelectorAll('.screen').forEach(s => {
+        s.classList.remove('active');
+    });
+
+    // 2. On affiche celui qu'on veut
+    const target = document.getElementById(screenId);
+    if (target) {
+        target.classList.add('active');
+        console.log("Affichage de l'écran :", screenId);
+    } else {
+        console.error("L'ID suivant n'existe pas dans ton HTML :", screenId);
+    }
+}
+
 window.addEventListener('resize', resizeCanvas);
 document.addEventListener('keydown', (e) => {
     if (e.key === "Escape") togglePause();
-    // 🌟 J'AI RETIRÉ LA TOUCHE "E" ICI, CAR renderer.js S'EN OCCUPE DÉJÀ AVEC 'interact'
 });
 const btnResume = document.getElementById('btn-resume');
 if(btnResume) btnResume.addEventListener('click', togglePause);
