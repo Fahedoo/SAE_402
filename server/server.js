@@ -12,7 +12,6 @@ const io = new Server(server);
 app.use(express.static(path.join(__dirname, '../public')));
 
 const LEVEL_WIDTH = 900;
-const world = new World(1980.0, 850.0, LEVEL_WIDTH);
 
 const platformsData = [
     { x: 42, y: 800, w: LEVEL_WIDTH - 81, h: 18, slope: -50 },
@@ -24,9 +23,15 @@ const platformsData = [
     { x: 300, y: 70, w: 170, h: 18, slope: 0 }
 ];
 
-platformsData.forEach(p => {
-    world.add_platform(p.x, p.y, p.w, p.h, p.slope);
-});
+function createWorld() {
+    const w = new World(1980.0, 850.0, LEVEL_WIDTH);
+    platformsData.forEach(p => {
+        w.add_platform(p.x, p.y, p.w, p.h, p.slope);
+    });
+    return w;
+}
+
+let world = createWorld();
 
 function getPlatY(index, targetX) {
     const p = platformsData[index];
@@ -78,6 +83,32 @@ setInterval(() => {
     const spawn = heartSpawns[Math.floor(Math.random() * heartSpawns.length)];
     hearts.push({ id: nextItemId++, x: spawn.x, y: spawn.y });
 }, 15000);
+
+function resetRoundState() {
+    if (world && world.free) {
+        try { world.free(); } catch(e) {}
+    }
+    world = createWorld();
+    tomatoes = [];
+    hearts = [];
+    knives = [];
+
+    Object.keys(players).forEach((socketId, index) => {
+        const spawnX = 80 + (index * 40);
+        const wasmId = world.add_player(spawnX, 750, 30, 30);
+        playerWasmIds[socketId] = wasmId;
+
+        const player = players[socketId];
+        player.wasmId = wasmId;
+        player.direction = 1;
+        player.vx = 0;
+        player.vy_input = 0;
+        player.isOverLadder = false;
+        player.lives = 3;
+        player.isDead = false;
+        player.invulnerableUntil = 0;
+    });
+}
 
 io.on('connection', (socket) => {
     console.log(`Nouveau rat connecté : ${socket.id}`);
@@ -132,44 +163,37 @@ io.on('connection', (socket) => {
 
     socket.on('requestStart', () => {
         if (players[socket.id] && players[socket.id].isAdmin) {
+            resetRoundState();
             gameConfig.isStarted = true;
+            io.emit('currentPlayers', players);
             io.emit('gameStarted', gameConfig);
         }
     });
 
-    // === BLOC CLAVIER NETTOYÉ ===
-    document.addEventListener('keydown', (e) => {
-        if (isPaused || !document.getElementById('screen-game').classList.contains('active')) return;
+    // === GESTION DES REQUÊTES JOUEUR DU SERVEUR ===
+    socket.on('playerInput', (data) => {
+        if (gameConfig.modeAmi) return; 
+        
+        let wasmId = playerWasmIds[socket.id];
+        let player = players[socket.id];
+        if (wasmId === undefined || !player || player.isDead) return;
 
-        const key = e.key.toLowerCase();
-
-        // 🏃 MOUVEMENTS (Q / D)
-        if (key === 'd' || key === 'arrowright') socket.emit('playerInput', { action: 'move', vx: 200 });
-        if (key === 'q' || key === 'a' || key === 'arrowleft') socket.emit('playerInput', { action: 'move', vx: -200 });
-
-        // 🪜 ÉCHELLES (W / S)
-        if (key === 'w' || key === 's' || key === 'arrowup' || key === 'arrowdown') {
-            const vy = (key === 's' || key === 'arrowdown') ? 200 : -200;
-            socket.emit('playerInput', { action: 'move_v', vy: vy });
+        if (data.action === 'move') {
+            world.set_player_vx(wasmId, data.vx); 
+            player.vx = data.vx; 
+            if (data.vx > 0) player.direction = 1;
+            else if (data.vx < 0) player.direction = -1;
+        } else if (data.action === 'move_v') {
+            player.vy_input = data.vy; 
+        } else if (data.action === 'jump') {
+            world.player_jump(wasmId, 450); 
+        } else if (data.action === 'usePowerup') {
+            // Traitement éventuel du powerup sur le serveur
         }
+    });
 
-        // 🦘 SAUT (Z ou Flèche Haut)
-        if ((key === 'z' || e.key === 'ArrowUp') && !e.repeat) {
-            playSound(sfx.jump);
-            socket.emit('playerInput', { action: 'jump' });
-        }
-
-        // ⚙️ LEVIER (E)
-        if (key === 'e') {
-            socket.emit('toggleLever', 'lever1');
-        }
-
-        // 🚀 POUVOIR (Espace)
-        if (e.code === "Space") {
-            e.preventDefault();
-            console.log("Envoi du pouvoir au serveur...");
-            socket.emit('playerInput', { action: 'usePowerup' });
-        }
+    socket.on('toggleLever', (leverId) => {
+        // Logique du levier côté serveur
     });
 
     socket.on('disconnect', () => {
@@ -188,6 +212,8 @@ io.on('connection', (socket) => {
             if (Object.keys(players).length === 0) {
                 gameConfig.isStarted = false;
                 tomatoes = []; hearts = []; knives = [];
+                if (world && world.free) { try { world.free(); } catch(e) {} }
+                world = createWorld();
             } else if (wasAdmin) {
                 players[Object.keys(players)[0]].isAdmin = true;
             }
@@ -334,7 +360,7 @@ setInterval(() => {
 
 }, 1000 / 60);
 
-const PORT = process.env.PORT || 3015;
+const PORT = process.env.PORT || 3630;
 server.listen(PORT, () => {
     console.log(`Serveur Multi (Wasm Hardcore) opérationnel sur http://localhost:${PORT}`);
 });
