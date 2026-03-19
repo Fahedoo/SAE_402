@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rats Raid - Brigade de Cuisine</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div id="app">
+        <section id="screen-login" class="screen active">
+            <h1 class="retro-title">
+                <span class="white">Chef's</span> <span class="red">Rage</span>
+            </h1>
+            <div class="menu-box">
+                <p class="label">ENTRE TON NOM DE COMMIS :</p>
+                <input type="text" id="pseudo" placeholder="NOM DU RAT..." maxlength="12">
+
+                <p class="label">CHOISIS TON PELAGE :</p>
+                <div class="color-picker">
+                    <div class="color-opt active" data-color="gray" style="background-color: #888;"></div>
+                    <div class="color-opt" data-color="white" style="background-color: #eee;"></div>
+                    <div class="color-opt" data-color="brown" style="background-color: #8b4513;"></div>
+                    <div class="color-opt" data-color="black" style="background-color: #222;"></div>
+                </div>
+
+                <button id="btn-to-lobby">REJOINDRE LA BRIGADE</button>
+            </div>
+        </section>
+
+        <section id="screen-lobby" class="screen">
+            <h2 class="retro-title">VESTIAIRE</h2>
+            <div class="menu-box lobby-box">
+                <div class="config-section">
+                    <p class="label">TAILLE DE LA BRIGADE :</p>
+                    <div class="selection-grid">
+                        <div class="choice-card active" id="opt-2-players">
+                            <span class="choice-title">2 RATS</span>
+                            <span class="choice-desc">DUO DE CHOC</span>
+                        </div>
+                        <div class="choice-card" id="opt-4-players">
+                            <span class="choice-title">4 RATS</span>
+                            <span class="choice-desc">BRIGADE COMPLÈTE</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <p class="label">ESPRIT D'EQUIPE</p>
+                    <div class="selection-grid">
+                        <div class="choice-card mode-ami active" id="opt-mode-ami">
+                            <span class="choice-title">AMI</span>
+                            <span class="choice-desc">ON S'AIDE (COOP)</span>
+                        </div>
+                        <div class="choice-card mode-ennemi" id="opt-mode-ennemi">
+                            <span class="choice-title">ENNEMI</span>
+                            <span class="choice-desc">CHACUN SA POMME</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="slots-container">
+                    <div class="slot" id="slot-1">EN ATTENTE...</div>
+                    <div class="slot" id="slot-2">EN ATTENTE...</div>
+                    <div id="extra-slots" style="display:none;">
+                        <div class="slot" id="slot-3">EN ATTENTE...</div>
+                        <div class="slot" id="slot-4">EN ATTENTE...</div>
+                    </div>
+                </div>
+
+                <div id="wait-message" style="display:none;">En attente du Chef de brigade...</div>
+                <button id="btn-start-service" class="btn-large">LANCER LE SERVICE !</button>
+            </div>
+        </section>
+
+        <section id="screen-game" class="screen">
+            <div id="hud">
+                <div class="hud-group"><span>VIES:</span><span id="lives-display">
+                        <img src="assets/coeur.png"
+                            style="width: 24px; height: 24px; vertical-align: middle; margin-right: 5px; margin-bottom: 4px;">
+                        <img src="assets/coeur.png"
+                            style="width: 24px; height: 24px; vertical-align: middle; margin-right: 5px; margin-bottom: 4px;">
+                        <img src="assets/coeur.png"
+                            style="width: 24px; height: 24px; vertical-align: middle; margin-right: 5px; margin-bottom: 4px;">
+                    </span></div>
+                <div class="hud-group"><span>TIME:</span><span id="timer">3:00</span></div>
+            </div>
+
+            <div id="game-instructions" class="kitchen-panel">
+                <h3 class="panel-title">MÉMO DE LA BRIGADE</h3>
+                <p><span class="kitchen-key">Z</span> / <span class="kitchen-key">↑</span> SAUTER</p>
+                <p><span class="kitchen-key">Q</span> / <span class="kitchen-key">D</span> MOUVEMENT</p>
+                <p><span class="kitchen-key">E</span> ACTIVER LEVIER</p>
+                <p><span class="kitchen-key">ESPACE</span> POUVOIR</p>
+                <p id="mode-text" class="panel-hint"></p>
+            </div>
+
+            <div id="inventory-box" class="kitchen-panel inventory-box">
+                <h3 class="panel-title">INVENTAIRE</h3>
+                <div class="inventory-slot">
+                    <img id="inventory-icon" src="" style="display: none;">
+                    <span id="inventory-empty">VIDE</span>
+                </div>
+            </div>
+            <canvas id="gameCanvas"></canvas>
+        </section>
+        <section id="screen-result" class="screen">
+            <h2 class="retro-title" id="result-title">FIN DU SERVICE</h2>
+            <div class="menu-box">
+                <button onclick="location.reload()">NOUVEAU SERVICE</button>
+            </div>
+
+        </section>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="main.js"></script>
+</body>
+
+</html>
