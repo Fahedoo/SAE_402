@@ -10,7 +10,7 @@ let modeAmi = true;
 let isPaused = false;
 let isAdmin = false; 
 
-let currentState = { players: {}, tomatoes: [], hearts: [] }; 
+let currentState = { players: {}, tomatoes: [], hearts: [], knives: [] }; 
 
 const opt2 = document.getElementById('opt-2-players');
 const opt4 = document.getElementById('opt-4-players');
@@ -24,19 +24,16 @@ function showScreen(screenId) {
     if (target) target.classList.add('active');
 }
 
-// 🌟 NOUVEAU : Blocage visuel des couleurs déjà prises
 socket.on('takenColors', (taken) => {
     let isSelectedAvailable = false;
     
     document.querySelectorAll('.color-opt').forEach(opt => {
         const color = opt.getAttribute('data-color');
         if (taken.includes(color)) {
-            // Couleur prise, on la grise et bloque le clic
             opt.style.opacity = '0.2';
             opt.style.pointerEvents = 'none';
             opt.classList.remove('active');
         } else {
-            // Couleur dispo
             opt.style.opacity = '1';
             opt.style.pointerEvents = 'auto';
             if (selectedColor === color) {
@@ -45,7 +42,6 @@ socket.on('takenColors', (taken) => {
         }
     });
 
-    // Si la couleur qu'on regardait vient d'être prise, on saute sur la première libre
     if (!isSelectedAvailable) {
         const firstAvailable = Array.from(document.querySelectorAll('.color-opt')).find(opt => opt.style.pointerEvents === 'auto');
         if (firstAvailable) {
@@ -91,7 +87,6 @@ function updatePlayersSlots(playersObj) {
         if (slotEl) {
             slotEl.innerText = player.pseudo.toUpperCase() + (player.id === socket.id ? " (MOI)" : "");
             slotEl.classList.add('active');
-            // 🌟 J'AI SUPPRIMÉ LA LIGNE QUI METTAIT LA COULEUR DU RAT ICI ! (Restera blanc/vert néon)
         }
     });
 
@@ -147,12 +142,14 @@ socket.on('worldState', (state) => {
         const myPlayer = state.players[socket.id];
         const livesEl = document.getElementById('lives-display');
         if (livesEl) {
-            if (myPlayer.isDead) {
+            if (modeAmi) {
+                livesEl.innerHTML = "---";
+            } else if (myPlayer.isDead) {
                 livesEl.innerHTML = "👻 SPECTATEUR";
             } else {
                 let heartsHtml = "";
                 for(let i = 0; i < myPlayer.lives; i++) {
-                    heartsHtml += `<img src="assets/coeur.png" style="width: 24px; vertical-align: middle; margin-right: 5px; margin-bottom: 4px;">`;
+                    heartsHtml += `<img src="assets/coeur.png" style="width: 24px; height: 24px; vertical-align: middle; margin-right: 5px; margin-bottom: 4px;">`;
                 }
                 livesEl.innerHTML = heartsHtml;
             }
@@ -168,11 +165,7 @@ socket.on('gameWon', (heroName) => {
     
     const resultTitle = document.getElementById('result-title');
     if (resultTitle) {
-        if (modeAmi) {
-            resultTitle.innerHTML = "<span class='text-glow-green'>HOLD-UP RÉUSSI !</span><br><span class='text-shake-red' style='font-size: 1.5rem; display: inline-block; margin-top: 20px;'>LE CHEF EST EN RAGE !</span>";
-        } else {
-            resultTitle.innerHTML = `<span class='text-glow-green'>VICTOIRE DE ${heroName.toUpperCase()} !</span><br><span class='text-shake-red' style='font-size: 1.5rem; display: inline-block; margin-top: 20px;'>IL A PIQUÉ LE FROMAGE !</span>`;
-        }
+        resultTitle.innerHTML = `<span class='text-glow-green'>VICTOIRE DE ${heroName.toUpperCase()} !</span><br><span class='text-shake-red' style='font-size: 1.5rem; display: inline-block; margin-top: 20px;'>IL A PIQUÉ LE FROMAGE !</span>`;
     }
     
     endGame(true); 
@@ -192,10 +185,32 @@ function initGameEngine() {
     const canvas = document.getElementById('gameCanvas');
     resizeCanvas();
 
+    if (modeAmi) {
+        const livesEl = document.getElementById('lives-display');
+        if (livesEl) livesEl.innerHTML = "---";
+    }
+
     if (!renderer) {
         renderer = new GameRenderer(canvas, selectedColor, socket); 
         function gameLoop() {
-            if (!isPaused) renderer.draw(currentState); 
+            if (!isPaused) {
+                // 🌟 L'Écran Noir en mode Coop
+                if (modeAmi) {
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = "black";
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    ctx.fillStyle = "#00FF41";
+                    ctx.font = "20px 'Press Start 2P', cursive";
+                    ctx.textAlign = "center";
+                    ctx.fillText("MODE COOP", canvas.width / 2, canvas.height / 2 - 30);
+                    
+                    ctx.fillStyle = "white";
+                    ctx.fillText("EN COURS DE CHARGEMENT...", canvas.width / 2, canvas.height / 2 + 20);
+                } else {
+                    renderer.draw(currentState); 
+                }
+            }
             requestAnimationFrame(gameLoop);
         }
         gameLoop();
@@ -207,6 +222,12 @@ function startTestTimer() {
     let timeLeft = 180;
     const timerDisplay = document.getElementById('timer');
     if (window.gameTimer) clearInterval(window.gameTimer);
+    
+    if (modeAmi) {
+        if(timerDisplay) timerDisplay.innerText = "--:--";
+        return; 
+    }
+
     window.gameTimer = setInterval(() => {
         if (!isPaused) {
             timeLeft--;
@@ -229,11 +250,9 @@ function endGame(isVictory) {
 
 function resizeCanvas() {
     const canvas = document.getElementById('gameCanvas');
-    const hud = document.getElementById('hud');
     if (canvas) {
         canvas.width = 900; 
-        const offset = hud ? hud.offsetHeight : 0;
-        canvas.height = window.innerHeight - offset;
+        canvas.height = window.innerHeight - 80; // 🌟 FIX : On soustrait toujours la taille fixe de notre HUD !
     }
 }
 

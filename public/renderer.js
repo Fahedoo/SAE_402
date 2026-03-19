@@ -32,10 +32,16 @@ export class GameRenderer {
         this.imgCoeur = new Image();
         this.imgCoeur.src = 'assets/coeur.png';
 
+        this.imgKnife = new Image();
+        this.imgKnife.src = 'assets/knife.png';
+
         this.chefFrame = 0;             
         this.lastChefSwap = Date.now(); 
         
         this.vfx = new VFXManager();
+
+        // 🌟 Lissage Réseau
+        this.lerpState = {};
 
         this.platforms = [
             { x: 42,   y: 800, w: this.canvas.width-81, h: 18, slope: -50 }, 
@@ -47,7 +53,6 @@ export class GameRenderer {
             { x: 300,  y: 70,  w: 170, h: 18, slope: 0 } 
         ];
 
-        // 🌟 RETOUR À LA NORMALE : w = 30 pour le dessin !
         this.ladders = [
             { x: 600, topIndex: 1, bottomIndex: 0, w: 30 }, 
             { x: 150, topIndex: 2, bottomIndex: 1, w: 30 }, 
@@ -211,7 +216,7 @@ export class GameRenderer {
         });
     }
 
-    draw(state = { players: {}, tomatoes: [], hearts: [] }) {
+    draw(state = { players: {}, tomatoes: [], hearts: [], knives: [] }) {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
         this.drawLadders();
@@ -266,6 +271,19 @@ export class GameRenderer {
             }
         });
         
+        if (state.knives) state.knives.forEach(k => {
+            if (this.imgKnife.complete && this.imgKnife.naturalWidth > 0) {
+                this.ctx.save();
+                this.ctx.translate(k.x + 15 / 2, k.y + 40 / 2);
+                this.ctx.rotate(Math.PI);
+                this.ctx.drawImage(this.imgKnife, -15 / 2, -40 / 2, 15, 40);
+                this.ctx.restore();
+            } else {
+                this.ctx.font = "24px Arial";
+                this.ctx.fillText("🗡️", k.x, k.y + 30);
+            }
+        });
+
         if (state.hearts) state.hearts.forEach(h => {
             if (this.imgCoeur.complete && this.imgCoeur.naturalWidth > 0) {
                 const floatY = Math.sin(Date.now() / 200) * 5; 
@@ -295,27 +313,31 @@ export class GameRenderer {
             let skin = p.isMoving ? allSkinsRun[p.color] : allSkinsIdle[p.color];
             if (p.isClimbing) skin = allSkinsClimb[p.color];
 
+            // 1. Lissage du réseau (Lerp) : On glisse doucement vers la position envoyée par le serveur
+            if (!this.lerpState[p.id]) {
+                this.lerpState[p.id] = { x: p.x, y: p.y };
+            }
+            let lerp = this.lerpState[p.id];
+            
+            lerp.x += (p.x - lerp.x) * 0.4;
+            lerp.y += (p.y - lerp.y) * 0.4;
+
+            if (Math.abs(p.x - lerp.x) > 50) lerp.x = p.x;
+            if (Math.abs(p.y - lerp.y) > 50) lerp.y = p.y;
+
+            let renderX = lerp.x;
+            let renderY = lerp.y;
+
             if (skin && skin.complete && skin.naturalWidth > 0) {
                 const ow = skin.naturalWidth; 
                 const oh = skin.naturalHeight;
                 
-                let renderX = p.x;
-                let renderY = p.y; 
-
-                if (p.on_ground) {
-                    this.platforms.forEach((plat, index) => {
-                        const footX = renderX + (ow / 2); 
-                        if (footX >= plat.x && footX <= plat.x + plat.w) {
-                            const groundY = this.getPlatformY(index, footX);
-                            if (Math.abs(p.y - (groundY - oh)) < 15) {
-                                renderY = groundY - oh; 
-                            }
-                        }
-                    });
-                }
+                // Le centre de la hitbox serveur est renderX + 15, renderY + 15
+                const hitBoxCenterX = renderX + 15;
+                const hitBoxCenterY = renderY + 15;
 
                 this.ctx.save();
-                this.ctx.translate(renderX + ow / 2, renderY + oh / 2);
+                this.ctx.translate(hitBoxCenterX, hitBoxCenterY);
 
                 if (p.isDead) {
                     this.ctx.globalAlpha = 0.6; 
@@ -328,7 +350,8 @@ export class GameRenderer {
                     this.ctx.scale(-1, 1);
                 }
 
-                this.ctx.drawImage(skin, -ow / 2, -oh / 2, ow, oh);
+                // On dessine l'image pour que le bas du sprite touche parfaitement le bas de la hitbox (15px sous le centre)
+                this.ctx.drawImage(skin, -ow / 2, 15 - oh, ow, oh);
                 this.ctx.restore(); 
 
                 this.ctx.fillStyle = p.isDead ? "#FF004D" : "white";
@@ -336,7 +359,7 @@ export class GameRenderer {
                 this.ctx.textAlign = "center";
                 
                 let displayName = p.isDead ? `K.O. - ${p.pseudo}` : (p.pseudo || "Rat");
-                this.ctx.fillText(displayName, renderX + ow/2, renderY - 10);
+                this.ctx.fillText(displayName, hitBoxCenterX, renderY + 30 - oh - 10);
             }
         });
 

@@ -31,6 +31,7 @@ pub struct Player {
     pub vy: f32,
     pub on_ground: bool,
     pub jump_boost_ready: bool,
+    pub is_active: bool, // 🌟 NOUVEAU : Différencie un joueur mort d'un joueur déconnecté
 }
 
 #[wasm_bindgen]
@@ -42,6 +43,7 @@ impl Player {
             vx: 0.0, vy: 0.0,
             on_ground: false,
             jump_boost_ready: false,
+            is_active: true, // Actif par défaut
         }
     }
 }
@@ -51,20 +53,19 @@ impl Player {
 pub struct World {
     gravity: f32,
     floor_y: f32,
-    pub width: f32, // ⚠️ NOUVEAU : La largeur logique du monde !
+    pub width: f32, 
     players: Vec<Player>,
     platforms: Vec<Platform>,
 }
 
 #[wasm_bindgen]
 impl World {
-    // ⚠️ NOUVEAU : Le constructeur prend maintenant la largeur
     #[wasm_bindgen(constructor)]
     pub fn new(gravity: f32, floor_y: f32, width: f32) -> World {
         World {
             gravity,
             floor_y,
-            width, // ⚠️ NOUVEAU
+            width, 
             players: Vec::new(),
             platforms: Vec::new(),
         }
@@ -74,6 +75,13 @@ impl World {
         let id = self.players.len();
         self.players.push(Player::new(x, y, w, h));
         id
+    }
+
+    // 🌟 NOUVEAU : Fonction pour transformer un joueur déconnecté en fantôme traversable
+    pub fn disconnect_player(&mut self, id: usize) {
+        if let Some(p) = self.players.get_mut(id) {
+            p.is_active = false;
+        }
     }
 
     pub fn add_platform(&mut self, x: f32, y: f32, w: f32, h: f32, slope: f32) -> usize {
@@ -122,18 +130,15 @@ impl World {
             p.jump_boost_ready = false;
         }
 
-        // 🌟 NOUVEAU : Murs physiques (Gauche et Droite) 🌟
+        // Murs physiques (Gauche et Droite)
         for p in self.players.iter_mut() {
-            // Mur gauche (X = 0)
             if p.x < 0.0 {
                 p.x = 0.0;
-                p.vx = 0.0; // On l'arrête net
+                p.vx = 0.0; 
             }
-
-            // Mur droit (X = self.width)
             if p.x + p.width > self.width {
                 p.x = self.width - p.width;
-                p.vx = 0.0; // On l'arrête net
+                p.vx = 0.0; 
             }
         }
 
@@ -146,7 +151,7 @@ impl World {
             }
         }
 
-        // 3) Collision avec les plateformes (Pentes intelligentes Wasm)
+        // 3) Collision avec les plateformes
         for p in self.players.iter_mut() {
             for plat in &self.platforms {
                 let player_center = p.x + (p.width / 2.0);
@@ -160,7 +165,7 @@ impl World {
                     let player_bottom = p.y + p.height;
 
                     let lands = p.vy >= 0.0
-                        && prev_bottom <= exact_plat_y + 15.0 // Marge de tolérance
+                        && prev_bottom <= exact_plat_y + 15.0 
                         && player_bottom >= exact_plat_y;
 
                     if lands {
@@ -174,7 +179,13 @@ impl World {
 
         // 4) Collision joueur contre joueur
         for a in 0..n {
+            // 🌟 NOUVEAU : Si le Joueur A est déconnecté, on l'ignore (Fantôme)
+            if !self.players[a].is_active { continue; } 
+
             for b in (a + 1)..n {
+                // 🌟 NOUVEAU : Si le Joueur B est déconnecté, on l'ignore
+                if !self.players[b].is_active { continue; } 
+
                 let (left, right) = self.players.split_at_mut(a + 1);
                 let pa = &mut left[a];
                 let pb = &mut right[b - a - 1];

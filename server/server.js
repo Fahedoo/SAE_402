@@ -49,6 +49,7 @@ const MAX_PLAYERS = 4;
 let gameConfig = { nbPlayers: 2, modeAmi: true, isStarted: false };
 let tomatoes = [];
 let hearts = []; 
+let knives = []; 
 let nextItemId = 1;
 
 const heartSpawns = [
@@ -60,15 +61,20 @@ const heartSpawns = [
 ];
 
 setInterval(() => {
-    if (!gameConfig.isStarted || Object.keys(players).length === 0) return;
+    if (!gameConfig.isStarted || Object.keys(players).length === 0 || gameConfig.modeAmi) return;
     if (tomatoes.length >= 8) return; 
     tomatoes.push({ id: nextItemId++, x: Math.floor(Math.random() * 800) + 20, y: -20, speed: Math.random() * 2 + 2 });
 }, 1500);
 
 setInterval(() => {
-    if (!gameConfig.isStarted || Object.keys(players).length === 0) return;
-    if (hearts.length >= 1) return; 
+    if (!gameConfig.isStarted || Object.keys(players).length === 0 || gameConfig.modeAmi) return;
+    if (knives.length >= 3) return; 
+    knives.push({ id: nextItemId++, x: Math.floor(Math.random() * 800) + 20, y: -40, speed: Math.random() * 3 + 7 });
+}, 4000); 
 
+setInterval(() => {
+    if (!gameConfig.isStarted || Object.keys(players).length === 0 || gameConfig.modeAmi) return;
+    if (hearts.length >= 1) return; 
     const spawn = heartSpawns[Math.floor(Math.random() * heartSpawns.length)];
     hearts.push({ id: nextItemId++, x: spawn.x, y: spawn.y }); 
 }, 15000); 
@@ -76,7 +82,6 @@ setInterval(() => {
 io.on('connection', (socket) => {
     console.log(`Nouveau rat connecté : ${socket.id}`);
 
-    // 🌟 Envoie la liste des couleurs déjà prises au nouvel arrivant
     socket.emit('takenColors', Object.values(players).map(p => p.color));
 
     socket.on('login', (data) => {
@@ -85,14 +90,12 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // 🌟 SÉCURITÉ : On vérifie que la couleur n'est pas déjà prise !
         if (Object.values(players).some(p => p.color === data.color)) {
             socket.emit('loginFailed', `Ce pelage est déjà pris par un autre joueur !`);
             return;
         }
 
         const isChef = Object.keys(players).length === 0;
-        
         const spawnX = 80 + (Object.keys(players).length * 40);
         const wasmId = world.add_player(spawnX, 750, 30, 30); 
         
@@ -116,8 +119,6 @@ io.on('connection', (socket) => {
         socket.emit('loginSuccess', players[socket.id]);
         socket.emit('configUpdated', gameConfig);
         io.emit('currentPlayers', players);
-        
-        // 🌟 Mise à jour des couleurs dispo pour tout le monde
         io.emit('takenColors', Object.values(players).map(p => p.color));
     });
     
@@ -137,6 +138,8 @@ io.on('connection', (socket) => {
     });
 
     socket.on('playerInput', (data) => {
+        if (gameConfig.modeAmi) return; 
+        
         let wasmId = playerWasmIds[socket.id];
         let player = players[socket.id];
         if (wasmId === undefined || !player || player.isDead) return;
@@ -156,27 +159,32 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         if (players[socket.id]) {
             const wasAdmin = players[socket.id].isAdmin;
+            const wasmId = players[socket.id].wasmId;
+            
+            // 🌟 NOUVEAU : On informe le Wasm de transformer ce joueur en fantôme traversable
+            if (world.disconnect_player) {
+                world.disconnect_player(wasmId);
+            }
+
             delete players[socket.id];
             delete playerWasmIds[socket.id]; 
 
             if (Object.keys(players).length === 0) {
                 gameConfig.isStarted = false;
-                tomatoes = []; hearts = [];
+                tomatoes = []; hearts = []; knives = [];
             } else if (wasAdmin) {
                 players[Object.keys(players)[0]].isAdmin = true;
             }
 
             io.emit('playerDisconnected', socket.id);
             io.emit('currentPlayers', players);
-            
-            // 🌟 Libération de la couleur
             io.emit('takenColors', Object.values(players).map(p => p.color));
         }
     });
 });
 
 setInterval(() => {
-    if (!gameConfig.isStarted) return;
+    if (!gameConfig.isStarted || gameConfig.modeAmi) return; 
 
     for (let socketId in players) {
         const player = players[socketId];
@@ -206,6 +214,12 @@ setInterval(() => {
             if (tomatoes[i].y >= 850) tomatoes.splice(i, 1);
         }
     }
+    if (knives.length > 0) {
+        for (let i = knives.length - 1; i >= 0; i--) {
+            knives[i].y += knives[i].speed;
+            if (knives[i].y >= 850) knives.splice(i, 1);
+        }
+    }
 
     for (let socketId in players) {
         let player = players[socketId];
@@ -229,6 +243,21 @@ setInterval(() => {
             }
         }
 
+        for (let i = knives.length - 1; i >= 0; i--) {
+            let k = knives[i];
+            if (px < k.x + 15 && px + 30 > k.x && py < k.y + 40 && py + 30 > k.y) {
+                if (Date.now() > player.invulnerableUntil) {
+                    player.lives--;
+                    player.invulnerableUntil = Date.now() + 1000; 
+                    if (player.lives <= 0) {
+                        player.isDead = true;
+                        world.set_player_vx(player.wasmId, 0); 
+                    }
+                }
+                knives.splice(i, 1); 
+            }
+        }
+
         for (let i = hearts.length - 1; i >= 0; i--) {
             let h = hearts[i];
             if (px < h.x + 30 && px + 30 > h.x && py < h.y + 30 && py + 30 > h.y) {
@@ -238,7 +267,7 @@ setInterval(() => {
         }
     }
 
-    const stateToBroadcast = { players: {}, tomatoes: tomatoes, hearts: hearts };
+    const stateToBroadcast = { players: {}, tomatoes: tomatoes, hearts: hearts, knives: knives };
 
     let ratsOnCheese = 0;
     let firstRatPseudo = "";
@@ -276,16 +305,12 @@ setInterval(() => {
         if (aliveRats === 0) {
             io.emit('gameOver');
             gameConfig.isStarted = false;
-            tomatoes = []; hearts = [];
+            tomatoes = []; hearts = []; knives = [];
         }
-        else if (gameConfig.modeAmi && ratsOnCheese === aliveRats && aliveRats > 0) {
-            io.emit('gameWon', "LA BRIGADE");
-            gameConfig.isStarted = false; 
-            tomatoes = []; hearts = [];
-        } else if (!gameConfig.modeAmi && ratsOnCheese > 0) {
+        else if (!gameConfig.modeAmi && ratsOnCheese > 0) {
             io.emit('gameWon', firstRatPseudo);
             gameConfig.isStarted = false; 
-            tomatoes = []; hearts = [];
+            tomatoes = []; hearts = []; knives = [];
         }
     }
 
