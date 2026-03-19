@@ -1,24 +1,33 @@
 // ==========================================
-// 1. GESTIONNAIRE DE CLAVIER
+// 1. GESTIONNAIRE DE CLAVIER (Mode 2 Joueurs Local)
 // ==========================================
 class Clavier {
     constructor() {
-        this.touches = { gauche: false, droite: false, saut: false, bas: false, interact: false, powerup: false };
+        // Séparation des contrôles pour les deux joueurs
+        this.touchesP1 = { gauche: false, droite: false, saut: false, bas: false, interact: false, powerup: false };
+        this.touchesP2 = { gauche: false, droite: false, saut: false, bas: false, interact: false, powerup: false };
+        
         window.addEventListener('keydown', (e) => this.actualiserTouche(e.key, true));
         window.addEventListener('keyup', (e) => this.actualiserTouche(e.key, false));
     }
     actualiserTouche(cle, etat) {
         const touche = cle.toLowerCase();
-        if (touche === 'q' || touche === 'arrowleft') this.touches.gauche = etat;
-        if (touche === 'd' || touche === 'arrowright') this.touches.droite = etat;
-        if (touche === 'z' || touche === 'arrowup') this.touches.saut = etat;
-        if (touche === 's' || touche === 'arrowdown') this.touches.bas = etat;
         
-        // E pour intéragir (Leviers)
-        if (touche === 'e') this.touches.interact = etat;
+        // --- JOUEUR 1 (ZQSD / Flèches + E + Espace) ---
+        if (touche === 'q' || touche === 'arrowleft') this.touchesP1.gauche = etat;
+        if (touche === 'd' || touche === 'arrowright') this.touchesP1.droite = etat;
+        if (touche === 'z' || touche === 'arrowup') this.touchesP1.saut = etat;
+        if (touche === 's' || touche === 'arrowdown') this.touchesP1.bas = etat;
+        if (touche === 'e') this.touchesP1.interact = etat;
+        if (touche === ' ') this.touchesP1.powerup = etat; 
         
-        // Espace uniquement pour le Power-up
-        if (touche === ' ') this.touches.powerup = etat; 
+        // --- JOUEUR 2 (TEST LOCAL : IJKL + U + O) ---
+        if (touche === 'j') this.touchesP2.gauche = etat;
+        if (touche === 'l') this.touchesP2.droite = etat;
+        if (touche === 'i') this.touchesP2.saut = etat;
+        if (touche === 'k') this.touchesP2.bas = etat;
+        if (touche === 'u') this.touchesP2.interact = etat; // U = Interagir (E)
+        if (touche === 'o') this.touchesP2.powerup = etat;  // O = PowerUp (Espace)
     }
 }
 
@@ -54,7 +63,7 @@ class Rat extends EntitePhysique {
         
         this.surRat = false; 
         this.peutSauter = false; this.enEscalade = false;  
-        this.boostActif = false; // Sera activé par le power-up ressort
+        this.boostActif = false; 
         
         this.viesMax = 3; this.vies = this.viesMax; this.framesInvincibilite = 0; 
         this.estMort = false; 
@@ -62,6 +71,9 @@ class Rat extends EntitePhysique {
         this.inventaire = null; 
         this.trappedTimer = 0; 
         this.controlsInvertedTimer = 0; 
+        
+        // NOUVEAU : Timer pour passer à travers les plateformes (Éclair)
+        this.ignorePlateformesTimer = 0; 
     }
 
     prendreDegat() {
@@ -83,7 +95,7 @@ class Rat extends EntitePhysique {
         
         if (this.boostActif) {
             this.vy = this.forceSaut * 1.5; // Super Saut !
-            this.boostActif = false; // Consomme le boost
+            this.boostActif = false; 
         } else {
             this.vy = this.forceSaut;
         }
@@ -92,6 +104,9 @@ class Rat extends EntitePhysique {
     
     calculerVelocite(touches) {
         if (this.estMort) { this.vx = 0; return; }
+        
+        // Gestion des timers d'effets (Piège, Vin, Éclair)
+        if (this.ignorePlateformesTimer > 0) this.ignorePlateformesTimer--;
         
         if (this.trappedTimer > 0) {
             this.trappedTimer--;
@@ -107,7 +122,7 @@ class Rat extends EntitePhysique {
 
         if (this.controlsInvertedTimer > 0) {
             this.controlsInvertedTimer--;
-            directionMarche *= -1; 
+            directionMarche *= -1; // Inversion !
         }
 
         if (directionMarche === -1) { this.vx = -this.vitesseMarche; this.direction = -1; }
@@ -130,30 +145,32 @@ class Rat extends EntitePhysique {
     utiliserPowerUp() {
         if (!this.inventaire || this.estMort || !this.canMove) return;
 
-        console.log(`🚀 Utilisation Power-up : ${this.inventaire}`);
+        console.log(`🚀 ${this.idJoueur} utilise le Power-up : ${this.inventaire}`);
 
-        switch (this.inventaire) {
-            case 'éclair':
-                listeJoueurs.forEach(rat => {
-                    if (rat.idJoueur !== this.idJoueur && !rat.estMort && !rat.enEscalade) {
-                        rat.ignoreGravite = false; 
-                        rat.vy = 5; 
+        if (this.inventaire === 'ressort') {
+            this.boostActif = true;
+        } else {
+            // ATTAQUES GLOBALES : Appliquées à tous les AUTRES joueurs
+            listeJoueurs.forEach(rat => {
+                if (rat.idJoueur !== this.idJoueur && !rat.estMort) {
+                    
+                    if (this.inventaire === 'éclair') {
+                        if (!rat.enEscalade) {
+                            rat.ignoreGravite = false; 
+                            // L'astuce magique : il ignore les plateformes pendant 20 frames !
+                            rat.ignorePlateformesTimer = 20; 
+                            rat.vy = 5; // Poussée vers le bas
+                        }
+                    } 
+                    else if (this.inventaire === 'piege') {
+                        rat.trappedTimer = 300; 
+                    } 
+                    else if (this.inventaire === 'vin') {
+                        rat.controlsInvertedTimer = 300; 
                     }
-                });
-                break;
-            case 'piege':
-                listePiegesPoses.push(new PiegePose(this.x, this.y));
-                break;
-            case 'vin':
-                listeVinPoses.push(new VinPose(this.x, this.y));
-                break;
-            case 'ressort':
-                // Active le mode "Super Saut" pour la prochaine fois qu'il saute
-                this.boostActif = true;
-                console.log("🚀 Ressort prêt ! Ton prochain saut sera boosté.");
-                break;
+                }
+            });
         }
-
         this.inventaire = null; 
     }
 }
@@ -171,7 +188,7 @@ class Rouleau {
     }
     bouger() {
         this.x += this.vx; this.y += this.vy;
-        this.angle -= 0.03; // Tourne un peu moins vite visuellement
+        this.angle -= 0.03; 
 
         if (this.y + this.h < 790) { 
             if (this.x <= 0) { this.x = 0; this.vx = 1.5; }
@@ -190,13 +207,11 @@ class Rouleau {
                 this.y = hauteurPente - this.h;
                 this.vy = 0;
                 
-                // --- VITESSE RÉDUITE DES ROULEAUX ---
-                let accelerationX = (plat.inclinaison / plat.w) * 30; // 30 au lieu de 50 (moins d'accélération)
+                let accelerationX = (plat.inclinaison / plat.w) * 30; 
                 this.vx = accelerationX; 
                 
-                // Vitesse minimum réduite
-                if (this.vx > -1.5 && this.vx <= 0) this.vx = -2; // -2 au lieu de -3
-                if (this.vx < 1.5 && this.vx >= 0) this.vx = 2;   // 2 au lieu de 3
+                if (this.vx > -1.5 && this.vx <= 0) this.vx = -2; 
+                if (this.vx < 1.5 && this.vx >= 0) this.vx = 2;   
                 break;
             }
         }
@@ -206,8 +221,7 @@ class Rouleau {
             if (this.y + this.h >= 800) {  
                 this.y = 800 - this.h; 
                 this.vy = 0;
-                // Vitesse sur le sol réduite
-                if (this.vx > -1) this.vx = -2.5; // -2.5 au lieu de -4
+                if (this.vx > -1) this.vx = -2.5; 
             } 
         }
     }
@@ -244,21 +258,7 @@ class FromageVictorieux {
 class CollectablePowerup {
     constructor(x, y, type) {
         this.x = x; this.y = y; this.w = 35; this.h = 35;
-        this.type = type; // 'éclair', 'piege', 'vin', 'ressort'
-    }
-}
-
-class PiegePose {
-    constructor(x, y) {
-        this.x = x; this.y = y; this.w = 40; this.h = 20;
-        this.active = true;
-    }
-}
-
-class VinPose {
-    constructor(x, y) {
-        this.x = x; this.y = y; this.w = 25; this.h = 40;
-        this.active = true;
+        this.type = type; 
     }
 }
 
@@ -267,7 +267,11 @@ class VinPose {
 // ==========================================
 const clavier = new Clavier();
 const monRat = new Rat(100, 700, "joueur1", "gris"); 
-let listeJoueurs = [monRat]; 
+
+// RAT COBAYE (Contrôlable avec IJKL)
+const ratCobaye = new Rat(600, 300, "joueur2", "marron"); 
+
+let listeJoueurs = [monRat, ratCobaye]; 
 let etatPartie = "EN_COURS"; 
 
 const canvasW = 900;
@@ -298,10 +302,7 @@ let listeRouleaux = [];
 let listeTomates = [];
 let listeCouteaux = [];
 let listeCoeurs = [];
-
 let listePowerupsCollectables = [];
-let listePiegesPoses = [];
-let listeVinPoses = [];
 
 let listeLeviers = [
     new LevierItem(100, getPlatformY(listePlateformes[0], 100) - 50),
@@ -344,7 +345,6 @@ setInterval(() => {
     }
 }, 10000); 
 
-// Spawn aléatoire de Power-ups (inclus le ressort maintenant)
 const TYPE_POWERUPS = ['éclair', 'piege', 'vin', 'ressort'];
 setInterval(() => {
     if (etatPartie === "EN_COURS" && listePowerupsCollectables.length < 2) {
@@ -388,115 +388,113 @@ function boucleDeJeu() {
     }
     if (tousMorts && etatPartie === "EN_COURS") etatPartie = "DEFAITE";
 
-    if (etatPartie === "EN_COURS") monRat.calculerVelocite(clavier.touches);
-    else monRat.vx = 0; 
+    // Application des contrôles pour les deux joueurs
+    if (etatPartie === "EN_COURS") {
+        monRat.calculerVelocite(clavier.touchesP1);
+        ratCobaye.calculerVelocite(clavier.touchesP2);
+    } else {
+        monRat.vx = 0; ratCobaye.vx = 0;
+    }
     
+    // Application de la physique globale
     monRat.appliquerPhysique();
+    ratCobaye.appliquerPhysique();
 
-    if (!monRat.estMort) {
-        monRat.peutSauter = false;
-        const boiteRat = { x: monRat.x, y: monRat.y, w: 30, h: 30 }; 
+    // Boucle sur chaque joueur pour les collisions
+    for (let joueur of listeJoueurs) {
+        if (!joueur.estMort) {
+            joueur.peutSauter = false;
+            const boiteJoueur = { x: joueur.x, y: joueur.y, w: 30, h: 30 }; 
+            
+            // On récupère le bon dictionnaire de touches
+            const touchesJoueur = (joueur.idJoueur === "joueur1") ? clavier.touchesP1 : clavier.touchesP2;
 
-        let toucheEchelle = false;
-        for (let ech of listeEchelles) {
-            if (boiteRat.x < ech.x + ech.w && boiteRat.x + boiteRat.w > ech.x &&
-                boiteRat.y < ech.yBot && boiteRat.y + boiteRat.h > ech.yTop) {
-                toucheEchelle = true;
-                if (!monRat.enEscalade && (clavier.touches.saut || clavier.touches.bas)) {
-                    monRat.enEscalade = true; monRat.ignoreGravite = true; 
-                }
-            }
-        }
-        if (!toucheEchelle) { monRat.enEscalade = false; monRat.ignoreGravite = false; }
-
-        if (!monRat.enEscalade && monRat.vy >= 0) {
-            let surPlateforme = false;
-            for (let plat of listePlateformes) {
-                let rxCentre = monRat.x + boiteRat.w / 2;
-                if (rxCentre >= plat.x && rxCentre <= plat.x + plat.w) {
-                    let yPente = getPlatformY(plat, rxCentre);
-                    if (monRat.y + boiteRat.h >= yPente - 10 && monRat.y + boiteRat.h <= yPente + 15) {
-                        monRat.y = yPente - boiteRat.h;
-                        monRat.vy = 0;
-                        monRat.peutSauter = true;
-                        surPlateforme = true;
-                        break;
+            // --- Collisions Échelles ---
+            let toucheEchelle = false;
+            for (let ech of listeEchelles) {
+                if (boiteJoueur.x < ech.x + ech.w && boiteJoueur.x + boiteJoueur.w > ech.x &&
+                    boiteJoueur.y < ech.yBot && boiteJoueur.y + boiteJoueur.h > ech.yTop) {
+                    toucheEchelle = true;
+                    if (!joueur.enEscalade && (touchesJoueur.saut || touchesJoueur.bas)) {
+                        joueur.enEscalade = true; joueur.ignoreGravite = true; 
                     }
                 }
             }
-            if (!surPlateforme && monRat.y + boiteRat.h >= 800) { 
-                monRat.y = 800 - boiteRat.h; 
-                monRat.vy = 0; monRat.peutSauter = true; 
-            } 
-        }
+            if (!toucheEchelle) { joueur.enEscalade = false; joueur.ignoreGravite = false; }
 
-        // Ramassage Power-ups
-        for (let i = listePowerupsCollectables.length - 1; i >= 0; i--) {
-            let p = listePowerupsCollectables[i];
-            if (checkCollisionAABB(boiteRat, p)) {
-                if (monRat.inventaire === null) {
-                    monRat.inventaire = p.type;
-                    listePowerupsCollectables.splice(i, 1);
+            // --- Collisions Plateformes (Désactivées temporairement par l'Éclair) ---
+            if (!joueur.enEscalade && joueur.vy >= 0 && joueur.ignorePlateformesTimer <= 0) {
+                let surPlateforme = false;
+                for (let plat of listePlateformes) {
+                    let rxCentre = joueur.x + boiteJoueur.w / 2;
+                    if (rxCentre >= plat.x && rxCentre <= plat.x + plat.w) {
+                        let yPente = getPlatformY(plat, rxCentre);
+                        if (joueur.y + boiteJoueur.h >= yPente - 10 && joueur.y + boiteJoueur.h <= yPente + 15) {
+                            joueur.y = yPente - boiteJoueur.h;
+                            joueur.vy = 0;
+                            joueur.peutSauter = true;
+                            surPlateforme = true;
+                            break;
+                        }
+                    }
                 }
+                if (!surPlateforme && joueur.y + boiteJoueur.h >= 800) { 
+                    joueur.y = 800 - boiteJoueur.h; 
+                    joueur.vy = 0; joueur.peutSauter = true; 
+                } 
             }
-        }
 
-        // Pièges posés au sol
-        for (let i = listePiegesPoses.length - 1; i >= 0; i--) {
-            let piege = listePiegesPoses[i];
-            if (piege.active && checkCollisionAABB(boiteRat, piege)) {
-                monRat.trappedTimer = 300; 
-                listePiegesPoses.splice(i, 1); 
-            }
-        }
-
-        // Vin posé au sol
-        for (let i = listeVinPoses.length - 1; i >= 0; i--) {
-            let vin = listeVinPoses[i];
-            if (vin.active && checkCollisionAABB(boiteRat, vin)) {
-                monRat.controlsInvertedTimer = 300; 
-                listeVinPoses.splice(i, 1); 
-            }
-        }
-
-        for (let obs of listeRouleaux) { if (checkCollisionAABB(boiteRat, obs)) monRat.prendreDegat(); }
-        for (let t of listeTomates) { if (checkCollisionAABB(boiteRat, t)) monRat.prendreDegat(); }
-        for (let c of listeCouteaux) { if (checkCollisionAABB(boiteRat, c)) monRat.prendreDegat(); }
-
-        for (let i = listeCoeurs.length - 1; i >= 0; i--) {
-            let c = listeCoeurs[i];
-            if (checkCollisionAABB(boiteRat, c)) {
-                if(monRat.vies < monRat.viesMax) {
-                    monRat.soigner();
-                    listeCoeurs.splice(i, 1);
-                }
-            }
-        }
-
-        // Utilisation Power-up
-        if (clavier.touches.powerup) {
-            monRat.utiliserPowerUp();
-            clavier.touches.powerup = false; 
-        }
-
-        // Action sur Leviers
-        texteActionAffiche = false;
-        texteActionX = 0; texteActionY = 0;
-        for (let lev of listeLeviers) {
-            if (!lev.estActive) {
-                const zone = {x: lev.x - 30, y: lev.y - 30, w: lev.w + 60, h: lev.h + 60};
-                if (checkCollisionAABB(boiteRat, zone)) {
-                    texteActionAffiche = true; texteActionX = lev.x; texteActionY = lev.y;
-                    if (clavier.touches.interact) {
-                        lev.estActive = true;
-                        clavier.touches.interact = false; 
+            // --- Ramassage Power-ups ---
+            for (let i = listePowerupsCollectables.length - 1; i >= 0; i--) {
+                let p = listePowerupsCollectables[i];
+                if (checkCollisionAABB(boiteJoueur, p)) {
+                    if (joueur.inventaire === null) {
+                        joueur.inventaire = p.type;
+                        listePowerupsCollectables.splice(i, 1);
                     }
                 }
             }
-        }
 
-        if (etatPartie === "EN_COURS" && clocheFromage.estOuverte && checkCollisionAABB(boiteRat, fromageVictorieux)) {
-            etatPartie = "VICTOIRE";
+            // --- Dégâts Obstacles ---
+            for (let obs of listeRouleaux) { if (checkCollisionAABB(boiteJoueur, obs)) joueur.prendreDegat(); }
+            for (let t of listeTomates) { if (checkCollisionAABB(boiteJoueur, t)) joueur.prendreDegat(); }
+            for (let c of listeCouteaux) { if (checkCollisionAABB(boiteJoueur, c)) joueur.prendreDegat(); }
+
+            // --- Ramassage Cœurs ---
+            for (let i = listeCoeurs.length - 1; i >= 0; i--) {
+                let c = listeCoeurs[i];
+                if (checkCollisionAABB(boiteJoueur, c)) {
+                    if(joueur.vies < joueur.viesMax) {
+                        joueur.soigner();
+                        listeCoeurs.splice(i, 1);
+                    }
+                }
+            }
+
+            // --- Utilisation Power-up ---
+            if (touchesJoueur.powerup) {
+                joueur.utiliserPowerUp();
+                touchesJoueur.powerup = false; 
+            }
+
+            // --- Action sur Leviers ---
+            for (let lev of listeLeviers) {
+                if (!lev.estActive) {
+                    const zone = {x: lev.x - 30, y: lev.y - 30, w: lev.w + 60, h: lev.h + 60};
+                    if (checkCollisionAABB(boiteJoueur, zone)) {
+                        texteActionAffiche = true; texteActionX = lev.x; texteActionY = lev.y;
+                        if (touchesJoueur.interact) {
+                            lev.estActive = true;
+                            touchesJoueur.interact = false; 
+                        }
+                    }
+                }
+            }
+
+            // --- Victoire ---
+            if (etatPartie === "EN_COURS" && clocheFromage.estOuverte && checkCollisionAABB(boiteJoueur, fromageVictorieux)) {
+                etatPartie = "VICTOIRE";
+            }
         }
     }
 
@@ -556,14 +554,6 @@ function boucleDeJeu() {
         dessinerSprite(img, p.x, p.y, p.w, p.h, "cyan");
     }
 
-    // Dessin Objets posés au sol
-    for (let piege of listePiegesPoses) {
-        if (piege.active) dessinerSprite(imgPiege, piege.x, piege.y, piege.w, piege.h, "black");
-    }
-    for (let vin of listeVinPoses) {
-        if (vin.active) dessinerSprite(imgVin, vin.x, vin.y, vin.w, vin.h, "purple");
-    }
-
     for (let obs of listeRouleaux) { dessinerSpriteRotatif(imgRouleau, obs.x, obs.y, obs.w, obs.h, obs.angle, "saddlebrown"); }
     for (let t of listeTomates) { dessinerSprite(imgTomate, t.x, t.y, t.w, t.h, "red"); }
     for (let c of listeCouteaux) { dessinerSprite(imgCouteau, c.x, c.y, c.w, c.h, "silver"); }
@@ -596,7 +586,7 @@ function boucleDeJeu() {
                 ctx.drawImage(imgRat, joueur.x, joueur.y, 30, 30);
             }
 
-            // Indicateur Visuel "Saut Boosté Actif"
+            // Indicateurs Visuels
             if (joueur.boostActif) {
                 ctx.fillStyle = "rgba(0,255,0,0.4)"; ctx.fillRect(0,0,30,30);
             }
@@ -606,6 +596,10 @@ function boucleDeJeu() {
             if (joueur.controlsInvertedTimer > 0) {
                 ctx.fillStyle = "rgba(128,0,128,0.3)"; ctx.fillRect(0,0,30,30); 
             }
+            
+            // Pseudo au dessus du joueur
+            ctx.fillStyle = "white"; ctx.font = "12px Arial";
+            ctx.fillText(joueur.idJoueur, (joueur.direction === -1) ? 0 : joueur.x, joueur.y - 10);
 
             ctx.restore();
         } else {
@@ -616,36 +610,34 @@ function boucleDeJeu() {
         ctx.globalAlpha = 1.0; 
     }
 
+    // Affichage des HUDs
     ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.fillRect(10,10, 200, 80); 
-
     ctx.fillStyle = "white"; ctx.font = "bold 20px Arial";
-    ctx.fillText("Vies : ", 20, 35);
+    ctx.fillText("J1 Vies : ", 20, 35);
     
     if (monRat.estMort) {
-        ctx.fillStyle = "red"; ctx.fillText("SPECTATEUR 👻", 80, 35);
+        ctx.fillStyle = "red"; ctx.fillText("SPECTATEUR 👻", 100, 35);
     } else {
-        for(let i=0; i<monRat.vies; i++) {
-            dessinerSprite(imgCoeur, 80 + (i * 30), 15, 20, 20, "red");
-        }
+        for(let i=0; i<monRat.vies; i++) dessinerSprite(imgCoeur, 100 + (i * 30), 15, 20, 20, "red");
     }
     
     ctx.fillStyle = "white"; ctx.font = "16px Arial";
     ctx.fillText(`Leviers : ${nbLeviersActifs}/3 🛠️`, 20, 60);
 
-    ctx.fillText("Power-up [ESPACE] : ", 20, 80);
+    ctx.fillText("P1 Power-up : ", 20, 80);
     if (monRat.inventaire) {
         let img = imgEclair;
         if (monRat.inventaire === 'piege') img = imgPiege;
         if (monRat.inventaire === 'vin') img = imgVin;
         if (monRat.inventaire === 'ressort') img = imgRessort;
-        dessinerSprite(img, 175, 62, 25, 25, "cyan");
+        dessinerSprite(img, 130, 62, 25, 25, "cyan");
     } else {
-        ctx.fillStyle = "#aaa"; ctx.fillText("(vide)", 175, 80);
+        ctx.fillStyle = "#aaa"; ctx.fillText("(vide)", 130, 80);
     }
 
     if (texteActionAffiche) {
         ctx.fillStyle = "white"; ctx.font = "bold 16px Arial";
-        ctx.fillText("Appuie sur E (Levier)", texteActionX - 30, texteActionY - 15);
+        ctx.fillText("Interagir !", texteActionX - 10, texteActionY - 15);
     }
 
     if (etatPartie === "DEFAITE") {
