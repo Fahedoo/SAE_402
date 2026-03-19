@@ -1,4 +1,4 @@
-// renderer.js - Mode Coopératif (Plateformes aérées avec headroom final)
+
 import { VFXManager } from './vfx.js';
 
 const allSkinsIdle = {};

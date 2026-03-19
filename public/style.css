@@ -209,21 +209,3 @@ button:active {
     image-rendering: pixelated;
     box-shadow: 0 0 20px rgba(0,0,0,0.8);
 }
-
-.screen {
-    display: none;
-    position: fixed; /* Très important pour passer devant le canvas */
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.9); /* Fond noir semi-transparent */
-    justify-content: center;
-    align-items: center;
-    z-index: 100; /* Doit être plus haut que le canvas */
-}
-
-.screen.active {
-    display: flex !important;
-    z-index: 9999 !important; /* Force l'affichage au premier plan */
-}

@@ -10,7 +10,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-app.use(express.static(path.join(__dirname, '../Public')));
+app.use(express.static(path.join(__dirname, '../public')));
 
 const LEVEL_WIDTH = 1000; 
 const world = new World(1980.0, 850.0, LEVEL_WIDTH); 
@@ -308,7 +308,12 @@ setInterval(() => {
     });
 
     // --- BROADCAST ÉTAT DU MONDE ---
-    const stateToBroadcast = { players: {} };
+    const stateToBroadcast = { 
+        players: {},
+        tomatoes: tomatoes, // On ajoute les tomates ici
+        knives: knives      // On ajoute les couteaux ici
+    };
+
     for (let socketId in players) {
         let wasmId = playerWasmIds[socketId];
         let player = players[socketId];

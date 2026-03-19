@@ -1,5 +1,6 @@
 import { GameRenderer } from './renderer.js';
 
+
 const socket = io(); 
 
 let renderer = null; 
@@ -129,6 +130,9 @@ socket.on('gameStarted', (config) => {
 
 // --- MODIFIÉ : Récupération de l'état complet du monde ---
 socket.on('worldState', (state) => {
+    if(state.knives && state.knives.length > 0) {
+        console.log("Missiles reçus du serveur :", state.knives.length);
+    }
     allPlayers = state.players; 
     currentTomatoes = state.tomatoes || [];
     currentKnives = state.knives || [];
