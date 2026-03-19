@@ -76,9 +76,18 @@ setInterval(() => {
 io.on('connection', (socket) => {
     console.log(`Nouveau rat connecté : ${socket.id}`);
 
+    // 🌟 Envoie la liste des couleurs déjà prises au nouvel arrivant
+    socket.emit('takenColors', Object.values(players).map(p => p.color));
+
     socket.on('login', (data) => {
         if (Object.keys(players).length >= gameConfig.nbPlayers) {
             socket.emit('loginFailed', `La cuisine est pleine ! Limitée à ${gameConfig.nbPlayers} rats.`);
+            return;
+        }
+
+        // 🌟 SÉCURITÉ : On vérifie que la couleur n'est pas déjà prise !
+        if (Object.values(players).some(p => p.color === data.color)) {
+            socket.emit('loginFailed', `Ce pelage est déjà pris par un autre joueur !`);
             return;
         }
 
@@ -107,6 +116,9 @@ io.on('connection', (socket) => {
         socket.emit('loginSuccess', players[socket.id]);
         socket.emit('configUpdated', gameConfig);
         io.emit('currentPlayers', players);
+        
+        // 🌟 Mise à jour des couleurs dispo pour tout le monde
+        io.emit('takenColors', Object.values(players).map(p => p.color));
     });
     
     socket.on('updateConfig', (newConfig) => {
@@ -156,6 +168,9 @@ io.on('connection', (socket) => {
 
             io.emit('playerDisconnected', socket.id);
             io.emit('currentPlayers', players);
+            
+            // 🌟 Libération de la couleur
+            io.emit('takenColors', Object.values(players).map(p => p.color));
         }
     });
 });
@@ -172,9 +187,6 @@ setInterval(() => {
         player.isOverLadder = false;
         if (!player.isDead) { 
             for(const lad of serverLadders) {
-                // 🌟 CORRECTION DÉFINITIVE HITBOX ÉCHELLE :
-                // On compare la bordure gauche du rat (px) avec la bordure gauche de l'échelle (lad.x).
-                // Il faut qu'ils soient alignés à 10 pixels près maximum !
                 if (Math.abs(px - lad.x) <= 10 && py > lad.y_top - 30 && py < lad.y_bottom) {   
                     player.isOverLadder = true;
                     break;
@@ -260,7 +272,6 @@ setInterval(() => {
         }
     }
 
-    // CONDITIONS DE FIN DE PARTIE
     if (totalRats > 0) {
         if (aliveRats === 0) {
             io.emit('gameOver');

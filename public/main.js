@@ -24,6 +24,37 @@ function showScreen(screenId) {
     if (target) target.classList.add('active');
 }
 
+// 🌟 NOUVEAU : Blocage visuel des couleurs déjà prises
+socket.on('takenColors', (taken) => {
+    let isSelectedAvailable = false;
+    
+    document.querySelectorAll('.color-opt').forEach(opt => {
+        const color = opt.getAttribute('data-color');
+        if (taken.includes(color)) {
+            // Couleur prise, on la grise et bloque le clic
+            opt.style.opacity = '0.2';
+            opt.style.pointerEvents = 'none';
+            opt.classList.remove('active');
+        } else {
+            // Couleur dispo
+            opt.style.opacity = '1';
+            opt.style.pointerEvents = 'auto';
+            if (selectedColor === color) {
+                isSelectedAvailable = true;
+            }
+        }
+    });
+
+    // Si la couleur qu'on regardait vient d'être prise, on saute sur la première libre
+    if (!isSelectedAvailable) {
+        const firstAvailable = Array.from(document.querySelectorAll('.color-opt')).find(opt => opt.style.pointerEvents === 'auto');
+        if (firstAvailable) {
+            firstAvailable.classList.add('active');
+            selectedColor = firstAvailable.getAttribute('data-color');
+        }
+    }
+});
+
 document.querySelectorAll('.color-opt').forEach(opt => {
     opt.addEventListener('click', () => {
         document.querySelectorAll('.color-opt').forEach(o => o.classList.remove('active'));
@@ -60,7 +91,7 @@ function updatePlayersSlots(playersObj) {
         if (slotEl) {
             slotEl.innerText = player.pseudo.toUpperCase() + (player.id === socket.id ? " (MOI)" : "");
             slotEl.classList.add('active');
-            slotEl.style.color = player.color;
+            // 🌟 J'AI SUPPRIMÉ LA LIGNE QUI METTAIT LA COULEUR DU RAT ICI ! (Restera blanc/vert néon)
         }
     });
 
@@ -109,11 +140,9 @@ socket.on('gameStarted', (config) => {
     initGameEngine();
 });
 
-// 🌟 GESTION DE L'ÉTAT ET DU HUD
 socket.on('worldState', (state) => {
     currentState = state; 
     
-    // Mise à jour du compteur de vie en haut
     if (state.players[socket.id]) {
         const myPlayer = state.players[socket.id];
         const livesEl = document.getElementById('lives-display');
@@ -121,7 +150,6 @@ socket.on('worldState', (state) => {
             if (myPlayer.isDead) {
                 livesEl.innerHTML = "👻 SPECTATEUR";
             } else {
-                // 🌟 C'EST ICI QU'ON UTILISE LE SPRITE AU LIEU DES EMOJIS
                 let heartsHtml = "";
                 for(let i = 0; i < myPlayer.lives; i++) {
                     heartsHtml += `<img src="assets/coeur.png" style="width: 24px; vertical-align: middle; margin-right: 5px; margin-bottom: 4px;">`;
